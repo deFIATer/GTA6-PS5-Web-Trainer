@@ -1,15 +1,26 @@
 /*
- * GTA VI Web Trainer — PS5 Home Screen / Itemzflow Web Shortcut Launcher (eboot.bin)
- * Opens the built-in PS5 Web Browser directly to http://127.0.0.1:8080
- * (served locally by GTA6WebTrainer.elf with full DualSense gamepad navigation).
+ * GTA VI Web Trainer — PS5 Media App Web Browser Launcher (eboot.bin)
+ * Hides splash screen and opens the standard PS5 Web Browser window directly to
+ * http://127.0.0.1:8080 (served locally by GTA6WebTrainer.elf).
  */
 
 #include <stddef.h>
 #include <stdint.h>
 
-extern int sceSystemServiceLaunchWebBrowser(const char *uri, void *param);
+typedef struct {
+    uint32_t size;
+    uint32_t reserved[3];
+} SceSystemServiceLaunchWebBrowserParam;
+
+extern int sceSystemServiceHideSplashScreen(void);
+extern int sceSystemServiceLaunchWebBrowser(const char *uri, const SceSystemServiceLaunchWebBrowserParam *param);
 
 int main(void) {
-    sceSystemServiceLaunchWebBrowser("http://127.0.0.1:8080", NULL);
+    sceSystemServiceHideSplashScreen();
+    SceSystemServiceLaunchWebBrowserParam param = {
+        .size = sizeof(SceSystemServiceLaunchWebBrowserParam),
+        .reserved = {0, 0, 0},
+    };
+    sceSystemServiceLaunchWebBrowser("http://127.0.0.1:8080", &param);
     return 0;
 }
