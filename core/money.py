@@ -200,12 +200,12 @@ class MoneyMixin:
                 pass
 
     def start_money_auto_watch(self, expected_amount: int | None = None) -> dict[str, Any]:
-        """Start explicit Auto-Detection mode (works from $0; optional current amount narrows candidates)."""
-        amt_filter: int | None = None
-        if expected_amount is not None and str(expected_amount).strip() != "":
-            val = int(expected_amount)
-            if val >= 0:
-                amt_filter = val
+        """Start explicit Auto-Detection mode (requires current cash >= 0 to avoid false positives)."""
+        if expected_amount is None or str(expected_amount).strip() == "":
+            raise ValueError("Enter your current cash first (0 or higher).")
+        amt_filter = int(expected_amount)
+        if amt_filter < 0:
+            raise ValueError("Current cash must be 0 or higher.")
 
         with self.lock:
             self._require_ready()

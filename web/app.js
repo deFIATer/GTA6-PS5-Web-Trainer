@@ -45,7 +45,7 @@ const I18N = {
     money_intro: "Choose a mode below: Manual (by exact cash) or Auto-Detect (works from $0).",
     money_m1: "Mode 1 · Manual (when cash > $0)", money_val_ph: "Enter exact cash shown in game", btn_search: "🔍 Search",
     money_m2: "Mode 2 · Auto-Detect (works from $0 — then change cash in game)",
-    money_auto_ph: "Current cash (e.g. 0 or 250 — optional)", btn_auto: "🤖 Auto-Detect",
+    money_auto_ph: "Enter current cash (e.g. 0 or 250 — required)", btn_auto: "🤖 Auto-Detect",
     btn_set_1m: "Set $1,000,000", btn_set_99m: "Set $99,999,999",
     ps5_conn_title: "PS5 Connection (PS5Debug-NG)", stat_game: "Game", stat_hook: "Hook / Vehicle",
     log_title: "Event Log", log_ready: "Ready. Click \"Connect PS5\" in the top-right corner.",
@@ -80,7 +80,7 @@ const I18N = {
     money_intro: "Wybierz tryb poniżej: Ręczny (po kwocie) lub Auto-wykrycie (od $0).",
     money_m1: "Tryb 1 · Ręczny (gdy masz > $0)", money_val_ph: "Wpisz dokładną gotówkę z ekranu gry", btn_search: "🔍 Szukaj",
     money_m2: "Tryb 2 · Auto-wykrycie (działa od $0 — potem zmień saldo w grze)",
-    money_auto_ph: "Obecna kwota (np. 0 lub 250 — opcjonalnie)", btn_auto: "🤖 Auto-wykrycie",
+    money_auto_ph: "Wpisz aktualny stan konta (np. 0 lub 250 — wymagane)", btn_auto: "🤖 Auto-wykrycie",
     btn_set_1m: "Ustaw $1 000 000", btn_set_99m: "Ustaw $99 999 999",
     ps5_conn_title: "Połączenie z PS5 (PS5Debug-NG)", stat_game: "Gra", stat_hook: "Hook / Pojazd",
     log_title: "Log zdarzeń", log_ready: "Gotowy. Kliknij „Połącz PS5” w prawym górnym rogu.",
@@ -516,8 +516,12 @@ async function moneyFind() {
 
 async function moneyWatch() {
   const raw = document.getElementById("money-auto-val").value.trim();
-  const amount = raw === "" ? null : parseInt(raw, 10);
-  await callApi("/api/money/watch", { amount: (amount !== null && !isNaN(amount) && amount >= 0) ? amount : null });
+  const amount = raw === "" ? NaN : parseInt(raw, 10);
+  if (isNaN(amount) || amount < 0) {
+    showToast(t("Enter your current cash first (0 or higher)", "Najpierw wpisz aktualny stan konta (0 lub więcej)"), "err");
+    return;
+  }
+  await callApi("/api/money/watch", { amount });
 }
 
 async function moneyReset() {

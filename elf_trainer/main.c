@@ -26,7 +26,7 @@
 #include "web_assets.h"
 
 #define HTTP_PORT 8080
-#define TRAINER_VERSION "ELF v1.1.2"
+#define TRAINER_VERSION "ELF v1.1.3"
 #define PS5DBG_MAGIC 0xFFAABBCCu
 #define CMD_SUCCESS  0x80000000u
 
@@ -1394,18 +1394,23 @@ static void handle_client(int cfd) {
             snprintf(msg, sizeof(msg), "Started manual search for $%d...", amt);
         }
     } else if (strcmp(path, "/api/money/watch") == 0) {
-        int amt = 0;
+        int amt = -1;
         bool has_f = json_get_int(body, "amount", &amt) && amt >= 0;
-        G.money_cancel = false;
-        G.money_addr_cnt = 0;
-        G.money_watch_cnt = 0;
-        snprintf(G.money_mode, sizeof(G.money_mode), "auto_scanning");
-        snprintf(G.money_note, sizeof(G.money_note), "AUTO: indexing wallet stats (~10s)...");
-        MoneyTask *mt = (MoneyTask *)calloc(1, sizeof(MoneyTask));
-        snprintf(mt->host, sizeof(mt->host), "%s", G.host);
-        mt->port = G.port; mt->pid = G.pid; mt->amount = amt; mt->has_filter = has_f;
-        pthread_t th; pthread_create(&th, NULL, money_auto_worker, mt); pthread_detach(th);
-        snprintf(msg, sizeof(msg), "Started Auto-Detect wallet watcher...");
+        if (!has_f) {
+            ok = false;
+            snprintf(msg, sizeof(msg), "Enter your current cash first (0 or higher)");
+        } else {
+            G.money_cancel = false;
+            G.money_addr_cnt = 0;
+            G.money_watch_cnt = 0;
+            snprintf(G.money_mode, sizeof(G.money_mode), "auto_scanning");
+            snprintf(G.money_note, sizeof(G.money_note), "AUTO: indexing wallet stats for $%d (~10s)...", amt);
+            MoneyTask *mt = (MoneyTask *)calloc(1, sizeof(MoneyTask));
+            snprintf(mt->host, sizeof(mt->host), "%s", G.host);
+            mt->port = G.port; mt->pid = G.pid; mt->amount = amt; mt->has_filter = true;
+            pthread_t th; pthread_create(&th, NULL, money_auto_worker, mt); pthread_detach(th);
+            snprintf(msg, sizeof(msg), "Started Auto-Detect wallet watcher ($%d)...", amt);
+        }
     } else if (strcmp(path, "/api/money/add") == 0) {
         int delta = 0;
         json_get_int(body, "delta", &delta);

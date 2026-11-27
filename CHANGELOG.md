@@ -2,6 +2,10 @@
 
 All notable changes to **GTA VI PS5 Web Trainer** are documented in this file.
 
+## [v1.1.3] - 2026-11-27
+### Changed
+- **Mode 2 · Auto-Detect requires current cash (`>= 0`)**: Entering your current cash balance (e.g. `0` or `250`) is now mandatory in both UI and backend (ELF & Python) to eliminate false-positive stat captures.
+
 ## [v1.1.2] - 2026-11-27
 ### Fixed
 - **ELF Master Wallet Scanner (`0xf0...` / `0xfa...` / `0x11...`)**: Fixed `align=1` + 1024-hit truncation when scanning for small cash amounts (e.g. `$14`). Now scans with `align=4` (4096-hit heap buffer) directly by rare structural signatures (`0x00000804` + `0xAF2E50` in `0xf0...`, and `0x6F0A8D01` in `0xfa...` / `0x11...`) so all 9 wallet addresses are reliably captured in `GTA6WebTrainer.elf`.
