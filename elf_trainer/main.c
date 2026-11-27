@@ -360,6 +360,11 @@ static void *bg_thread_fn(void *arg) {
         usleep(250000);
         tick++;
         pthread_mutex_lock(&G.lock);
+        if (!G.connected && (tick % 12 == 0)) {
+            if (trainer_connect_locked(G.host, G.port) == 0) {
+                dbg_notify("Auto-connected to GTA VI!");
+            }
+        }
         if (G.connected && G.hook_installed && (G.god_mode || G.never_wanted || G.freeze_time)) {
             if (G.god_mode) {
                 uint32_t h = 0;
