@@ -9,7 +9,11 @@ Works on **PC, Mac, Linux, Tablet, and Phone** over Wi-Fi — **English (default
 
 - **Main-thread GOT Hook** (`scePadReadState`) — executes RAGE engine functions safely on the game's main thread.
 - **Player** *(Recommended)*: All-in-One (Heal + Armor + Repair), separate Heal / Armor / Repair, **God Mode** (auto-heal & auto-repair), **Never Wanted**, Wanted Level 0–5 & +/-1, **PS5 On-Screen Notifications** (3s paced dedicated TCP channel), plus **5 Native `eboot.bin` Patches**: **Unlimited Health (Native)**, **Unlimited Stamina**, **Infinite Ammo**, **Max Relationship**, and **Max Criminal Profile**.
-- **GoldHEN / etaHEN Cheat JSON**: Included in [`cheats/PPSA38500_01.002.001.json`](cheats/PPSA38500_01.002.001.json) with all 11 native x86-64 code-cave cheats (Health, Stamina, Ammo, Wanted, Relationship, Criminal Profile, Time Presets 08:00/12:00/19:00/00:00, and Vehicle Auto-Repair).
+- **GoldHEN / etaHEN Cheat JSON**: Included in [`cheats/PPSA38500_01.002.001.json`](cheats/PPSA38500_01.002.001.json) with **33 native x86-64 code-cave cheats** (Health, Stamina, Ammo, Wanted, Relationship, Criminal Profile, Time Presets 08:00/12:00/19:00/00:00, Vehicle Auto-Repair, and **22 Top Vehicle Spawners**).
+
+> [!WARNING]
+> **Important — Vehicle Spawn Cheats in `PPSA38500_01.002.001.json`**:  
+> Toggle a `Spawn: ...` cheat **ON**, wait **~3 seconds** for the vehicle to appear, and **immediately toggle it back OFF before getting into the vehicle**. Entering a vehicle while a Spawn cheat is still active can cause an error and freeze the game!
 - **Vehicles (252)** *(Recommended)*: Verified against live PS5 `ArchetypeMap`, categorized using GTA Fandom Wiki names, instant search, persistent **⭐ Favorites**, Quick Spawn, and **Available in Game Only** live filter.
 - **World** *(Recommended)*: Time presets (Morning, Noon, Sunset, Midnight), custom time, **Freeze Time**.
 - **Money (Beta / Experimental)**: Currently unreliable / may not work in `GTA6WebTrainer.elf`. A fully working Cash module will be announced and released in **`v2.0.0`** — for now, please use the **Player**, **Vehicles (Spawn)**, and **World** tabs.
@@ -50,7 +54,10 @@ Język przełączysz w prawym górnym rogu przyciskiem **`🌐 EN / PL`**.
   3. Kliknij kafelek **GTA VI Web Trainer** w **Multimedia** na PS5 (pełna obsługa DualSense: `L1/R1`, krzyżak, scroll prawą gałką, `X`) albo otwórz `http://<IP_PS5>:8080` na telefonie.
 - **macOS / Linux**: uruchom `./start_mac_linux.sh`
 - **Windows**: kliknij dwukrotnie `start_windows.bat`
-- Otwórz `http://localhost:8080`, wpisz IP swojej PS5 i kliknij **Połącz z PS5**.
+- **Otwórz `http://localhost:8080`**, wpisz IP swojej PS5 i kliknij **Połącz z PS5**.
+- **Cheaty GoldHEN / etaHEN JSON ([`cheats/PPSA38500_01.002.001.json`](cheats/PPSA38500_01.002.001.json))**: zawiera 33 natywne cheaty (w tym 22 spawny topowych pojazdów).
+  > [!WARNING]
+  > **WAŻNE (cheaty `Spawn: ...` w JSON-ie)**: Po włączeniu cheata spawnu na **ON** odczekaj **ok. 3 sekundy** aż pojazd się pojawi, a następnie **obowiązkowo wyłącz go z powrotem na OFF zanim wsiądziesz do auta** — wejście do pojazdu z aktywnym cheatem spawnu może wywołać błąd i zawiesić grę!
 
 ---
 
