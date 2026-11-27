@@ -325,6 +325,8 @@ function applyStatus(s) {
   document.getElementById("sw-n-ammo").classList.toggle("on", !!state.infinite_ammo);
   document.getElementById("sw-n-rel").classList.toggle("on", !!state.max_relationship);
   document.getElementById("sw-n-crim").classList.toggle("on", !!state.max_criminal_profile);
+  document.getElementById("sw-n-money").classList.toggle("on", !!state.no_money_decrease);
+  document.getElementById("sw-n-conf").classList.toggle("on", !!state.no_money_confiscation);
   document.getElementById("sw-ft").classList.toggle("on", state.freeze_time);
   document.getElementById("sw-lek").classList.toggle("on", state.lektor_enabled);
   document.getElementById("sw-macsay").classList.toggle("on", state.lektor_mac_say);
