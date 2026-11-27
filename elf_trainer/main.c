@@ -1577,7 +1577,7 @@ int main(void) {
         return 1;
     }
     listen(sfd, 16);
-    dbg_notify("Web Trainer ELF started! Port 8080");
+    dbg_notify(TRAINER_VERSION " by deFIATer/czupryneq (Port 8080)");
 
     /* Register Media tile asynchronously AFTER HTTP server is already live on :8080 */
     pthread_create(&tile, NULL, tile_thread_fn, NULL);
