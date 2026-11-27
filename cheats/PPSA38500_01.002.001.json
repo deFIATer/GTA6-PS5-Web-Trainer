@@ -3,13 +3,11 @@
   "id": "PPSA38500",
   "version": "01.002.001",
   "process": "eboot.bin",
-  "credits": [
-    "deFIATer/czupryneq"
-  ],
   "mods": [
     {
       "name": "Unlimited Health",
       "description": "Prevents nonlethal health loss.",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "08F69300",
@@ -46,6 +44,7 @@
     {
       "name": "Unlimited Stamina",
       "description": "Prevents stamina drain.",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "08F69600",
@@ -64,6 +63,7 @@
     {
       "name": "Max Relationship",
       "description": "Sets the relationship score to its maximum.",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "08F6A100",
@@ -82,6 +82,7 @@
     {
       "name": "Clear Wanted Level",
       "description": "Clears the current wanted level.",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "08F69C00",
@@ -100,6 +101,7 @@
     {
       "name": "Infinite Ammo",
       "description": "Prevents ammo use when firing.",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "08F6A300",
@@ -118,6 +120,7 @@
     {
       "name": "Max Criminal Profile",
       "description": "Sets your profile to Professional.",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "08F6A600",
@@ -136,6 +139,7 @@
     {
       "name": "Time: Morning (08:00)",
       "description": "Locks in-game clock to 08:00 (toggle OFF to resume clock; enable one PLT cheat at a time).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "08F6AA00",
@@ -154,6 +158,7 @@
     {
       "name": "Time: Noon (12:00)",
       "description": "Locks in-game clock to 12:00 (toggle OFF to resume clock; enable one PLT cheat at a time).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "08F6AB00",
@@ -172,6 +177,7 @@
     {
       "name": "Time: Sunset (19:00)",
       "description": "Locks in-game clock to 19:00 (toggle OFF to resume clock; enable one PLT cheat at a time).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "08F6AC00",
@@ -190,6 +196,7 @@
     {
       "name": "Time: Midnight (00:00)",
       "description": "Locks in-game clock to 00:00 (toggle OFF to resume clock; enable one PLT cheat at a time).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "08F6AD00",
@@ -208,6 +215,7 @@
     {
       "name": "Vehicle Auto-Repair",
       "description": "Continuously repairs your current vehicle (enable one PLT cheat at a time).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "08F6AE00",
@@ -226,6 +234,7 @@
     {
       "name": "Spawn: Thrax (Super)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -250,6 +259,7 @@
     {
       "name": "Spawn: Emerus (Super)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -274,6 +284,7 @@
     {
       "name": "Spawn: Vitello (Super)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -298,6 +309,7 @@
     {
       "name": "Spawn: Itali RSX (Sports)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -322,6 +334,7 @@
     {
       "name": "Spawn: Comet Retro (Sports)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -346,6 +359,7 @@
     {
       "name": "Spawn: Infernus '96 (Classic)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -370,6 +384,7 @@
     {
       "name": "Spawn: Gauntlet Hellfire",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -394,6 +409,7 @@
     {
       "name": "Spawn: Gauntlet Classic",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -418,6 +434,7 @@
     {
       "name": "Spawn: Vigero ZX (Muscle)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -442,6 +459,7 @@
     {
       "name": "Spawn: SFB 1000 (Moto)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -466,6 +484,7 @@
     {
       "name": "Spawn: Alvino V1 (Moto)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -490,6 +509,7 @@
     {
       "name": "Spawn: Carbon RS (Moto)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -514,6 +534,7 @@
     {
       "name": "Spawn: Sanchez (Off-Road)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -538,6 +559,7 @@
     {
       "name": "Spawn: Cliffhanger (Off-Road)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -562,6 +584,7 @@
     {
       "name": "Spawn: Manchez (Off-Road)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -586,6 +609,7 @@
     {
       "name": "Spawn: P-996 LAZER (Jet)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -610,6 +634,7 @@
     {
       "name": "Spawn: Shamal (Jet)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -634,6 +659,7 @@
     {
       "name": "Spawn: Nimbus (Jet)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -658,6 +684,7 @@
     {
       "name": "Spawn: Mallard (Stunt Plane)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -682,6 +709,7 @@
     {
       "name": "Spawn: Buzzard (Heli)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -706,6 +734,7 @@
     {
       "name": "Spawn: Valkyrie (Heli)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -730,6 +759,7 @@
     {
       "name": "Spawn: Volatus (Heli)",
       "description": "Streams & spawns 1 vehicle in front of player (toggle ON to spawn, toggle OFF before spawning another).",
+      "type": "checkbox",
       "memory": [
         {
           "offset": "0E7C7F00",
@@ -751,5 +781,8 @@
         }
       ]
     }
+  ],
+  "credits": [
+    "deFIATer/czupryneq"
   ]
 }
