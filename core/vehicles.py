@@ -45,8 +45,11 @@ def load_vehicles(header_path: Path) -> list[dict[str, Any]]:
 
     text = header_path.read_text(encoding="utf-8", errors="ignore")
     matches = re.findall(r'\{\s*"([^"]+)"\s*,\s*(0x[0-9A-Fa-f]+)ull\s*\}', text)
+    missing_in_game = {"annihilator", "jetmax"}
     result = []
     for name, h in matches:
+        if name.lower() in missing_in_game:
+            continue
         w = wiki_map.get(name.lower(), {})
         display = w.get("display") or name
         cat = w.get("category") or classify_vehicle(name)

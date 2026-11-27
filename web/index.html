@@ -32,9 +32,9 @@ try {
       </div>
       <nav class="side-nav">
         <button class="side-btn active" data-side="self" onclick="switchTab('self')"><span aria-hidden="true">👤</span> <span data-i18n="nav_self">Player</span></button>
-        <button class="side-btn" data-side="vehicles" onclick="switchTab('vehicles')"><span aria-hidden="true">🚗</span> <span data-i18n="nav_vehicles_full">Vehicles (254)</span></button>
-        <button class="side-btn" data-side="world" onclick="switchTab('world')"><span aria-hidden="true">🌤️</span> <span data-i18n="nav_world_full">World &amp; Weather</span></button>
-        <button class="side-btn" data-side="lektor" onclick="switchTab('lektor')"><span aria-hidden="true">🎙️</span> <span data-i18n="nav_lektor_full">Voiceover</span></button>
+        <button class="side-btn" data-side="vehicles" onclick="switchTab('vehicles')"><span aria-hidden="true">🚗</span> <span data-i18n="nav_vehicles_full">Vehicles (252)</span></button>
+        <button class="side-btn" data-side="world" onclick="switchTab('world')"><span aria-hidden="true">🌤️</span> <span data-i18n="nav_world">World</span></button>
+        <button class="side-btn" id="side-lektor" data-side="lektor" onclick="switchTab('lektor')" style="display:none"><span aria-hidden="true">🎙️</span> <span data-i18n="nav_lektor_full">Lektor PL (Beta)</span></button>
         <button class="side-btn" data-side="money" onclick="switchTab('money')"><span aria-hidden="true">💰</span> <span data-i18n="nav_money">Money</span></button>
         <button class="side-btn" data-side="ps5" onclick="switchTab('ps5')"><span aria-hidden="true">🎮</span> <span>PS5</span></button>
       </nav>
@@ -144,11 +144,6 @@ try {
             </div>
             <div id="sw-ft" class="switch"></div>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title" data-i18n="weather_title">Weather</div>
-          <button class="btn primary" onclick="callApi('/api/weather')" data-i18n="btn_weather">🌦️ Next Weather</button>
         </div>
       </section>
 
@@ -300,6 +295,10 @@ try {
             <input id="veh-search" type="text" data-i18n-ph="veh_search_ph" placeholder="Search vehicle (e.g. banshee, apc, pmp 700)..." oninput="renderVehicles()" />
           </div>
           <div class="chips" id="veh-cats"></div>
+          <div id="fav-veh-wrap" style="display:none;margin-bottom:6px">
+            <div class="card-title" style="margin-top:4px" data-i18n="fav_spawn">⭐ Favorites</div>
+            <div class="chips" id="fav-veh"></div>
+          </div>
           <div class="card-title" style="margin-top:4px" data-i18n="quick_spawn">Quick Spawn</div>
           <div class="chips" id="quick-veh"></div>
           <div id="veh-grid" class="veh-grid"></div>
@@ -309,11 +308,11 @@ try {
   </div>
 
   <!-- Mobile Bottom Nav -->
-  <nav class="bottom-nav" aria-label="Mobile navigation">
+  <nav class="bottom-nav" id="bottom-nav" aria-label="Mobile navigation">
     <button class="nav-btn active" data-tab="self" onclick="switchTab('self')"><span class="ico" aria-hidden="true">👤</span><span data-i18n="nav_self">Player</span></button>
     <button class="nav-btn" data-tab="vehicles" onclick="switchTab('vehicles')"><span class="ico" aria-hidden="true">🚗</span><span data-i18n="nav_vehicles">Vehicles</span></button>
     <button class="nav-btn" data-tab="world" onclick="switchTab('world')"><span class="ico" aria-hidden="true">🌤️</span><span data-i18n="nav_world">World</span></button>
-    <button class="nav-btn" data-tab="lektor" onclick="switchTab('lektor')"><span class="ico" aria-hidden="true">🎙️</span><span data-i18n="nav_lektor">Voice</span></button>
+    <button class="nav-btn" id="nav-lektor" data-tab="lektor" onclick="switchTab('lektor')" style="display:none"><span class="ico" aria-hidden="true">🎙️</span><span data-i18n="nav_lektor">Lektor</span></button>
     <button class="nav-btn" data-tab="money" onclick="switchTab('money')"><span class="ico" aria-hidden="true">💰</span><span data-i18n="nav_money">Money</span></button>
     <button class="nav-btn" data-tab="ps5" onclick="switchTab('ps5')"><span class="ico" aria-hidden="true">🎮</span><span>PS5</span></button>
   </nav>

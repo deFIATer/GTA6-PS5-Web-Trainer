@@ -2,6 +2,16 @@
 
 All notable changes to **GTA VI PS5 Web Trainer** are documented in this file.
 
+## [v1.1.0] - 2026-11-27
+### Added
+- **Working Money Tab in Standalone `GTA6WebTrainer.elf`**: Implemented full Manual (`/api/money/find`), Auto-Detect (`/api/money/watch`), Add/Set/Reset wallet scanner in C on a dedicated TCP channel (HUD pairs in `0x11...` + stat entries in `0x10...`).
+- **⭐ Favorite Vehicles**: Star any vehicle to pin it to a persistent **⭐ Favorites** quick-spawn bar above Quick Spawn (saved in `localStorage`).
+### Changed
+- **Voiceover → `Lektor PL (Beta)`**: Shown only when language is switched to Polish (`PL`); hidden automatically in English (`EN`) mode (including DualSense `L1 / R1` navigation).
+- **Cleaned Vehicle List (252 verified models)**: Live-audited all 254 models against PS5 `ArchetypeMap` (`PPSA38500 01.002.001`) and removed the 2 missing models (`annihilator`, `jetmax`).
+### Removed
+- Removed non-working **Next Weather** card from the World tab.
+
 ## [v1.0.6] - 2026-11-27
 ### Changed
 - **One-time Media Tile Installation**: `GTA6WebTrainer.elf` now checks if `/user/app/PPSA38599/sce_sys/param.json` and the latest `icon0.png` are already installed and skips re-registering on subsequent launches.

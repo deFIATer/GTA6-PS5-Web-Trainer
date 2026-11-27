@@ -3,8 +3,6 @@
 #include <stddef.h>
 typedef struct { const char *name; uint64_t hash; } VehicleHashEntry;
 static const VehicleHashEntry VEHICLE_HASHES[] = {
-  {"annihilator", 0x1d2791cee56c976bULL},
-  {"jetmax", 0x71c465a140565342ULL},
   {"216cstreamer", 0xa10bb1f7eda7d841ULL},
   {"airbus", 0xeebae6ad3830e800ULL},
   {"airtug", 0xf5ccdb992ca0bfd0ULL},
@@ -258,4 +256,4 @@ static const VehicleHashEntry VEHICLE_HASHES[] = {
   {"zombieb", 0xabc6a0af403d7b74ULL},
   {"zorrusso", 0xe2db600c92ac9f01ULL},
 };
-static const size_t VEHICLE_HASHES_COUNT = 254;
+static const size_t VEHICLE_HASHES_COUNT = 252;

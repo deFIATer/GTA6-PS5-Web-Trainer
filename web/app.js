@@ -26,9 +26,9 @@ const CAT_EN = {
 
 const I18N = {
   en: {
-    nav_dashboard: "Dashboard", nav_self: "Player", nav_vehicles: "Vehicles", nav_vehicles_full: "Vehicles (254)",
-    nav_world: "World", nav_world_full: "World & Weather", nav_lektor: "Voice", nav_lektor_full: "Voiceover",
-    nav_money: "Money", nav_ps5_full: "Money & PS5",
+    nav_dashboard: "Dashboard", nav_self: "Player", nav_vehicles: "Vehicles", nav_vehicles_full: "Vehicles (252)",
+    nav_world: "World", nav_world_full: "World", nav_lektor: "Lektor", nav_lektor_full: "Lektor PL (Beta)",
+    nav_money: "Money", nav_ps5_full: "PS5", fav_spawn: "⭐ Favorites",
     credits_offsets: "Game offsets:", credits_cats: "Categories:", credits_footer: "Game offsets & vehicle list based on",
     connect_ps5: "Connect PS5", disconnect_ps5: "🔌 Disconnect PS5", stop_elf: "🛑 Stop ELF Server (for update)",
     refresh_status: "Refresh Status", disconnected: "Disconnected", stat_ver: "Trainer Version",
@@ -61,9 +61,9 @@ const I18N = {
     quick_spawn: "Quick Spawn",
   },
   pl: {
-    nav_dashboard: "Dashboard", nav_self: "Postać", nav_vehicles: "Pojazdy", nav_vehicles_full: "Pojazdy (254)",
-    nav_world: "Świat", nav_world_full: "Świat i Pogoda", nav_lektor: "Lektor", nav_lektor_full: "Lektor PL",
-    nav_money: "Kasa", nav_ps5_full: "Kasa i PS5",
+    nav_dashboard: "Dashboard", nav_self: "Postać", nav_vehicles: "Pojazdy", nav_vehicles_full: "Pojazdy (252)",
+    nav_world: "Świat", nav_world_full: "Świat", nav_lektor: "Lektor", nav_lektor_full: "Lektor PL (Beta)",
+    nav_money: "Kasa", nav_ps5_full: "PS5", fav_spawn: "⭐ Ulubione",
     credits_offsets: "Offsety gry:", credits_cats: "Kategorie:", credits_footer: "Offsety gry i lista pojazdów na podstawie",
     connect_ps5: "Połącz z PS5", disconnect_ps5: "🔌 Rozłącz PS5", stop_elf: "🛑 Wyłącz serwer ELF (do aktualizacji)",
     refresh_status: "Odśwież status", disconnected: "Rozłączono", stat_ver: "Wersja Trainera",
@@ -114,7 +114,15 @@ function applyLang() {
     const k = el.getAttribute("data-i18n-ph");
     if (dict[k]) el.placeholder = dict[k];
   });
-  if (allVehicles.length) { renderCategories(); renderVehicles(); }
+  const isPL = currentLang === "pl";
+  const sideLek = document.getElementById("side-lektor");
+  const navLek = document.getElementById("nav-lektor");
+  const bnav = document.getElementById("bottom-nav");
+  if (sideLek) sideLek.style.display = isPL ? "" : "none";
+  if (navLek) navLek.style.display = isPL ? "" : "none";
+  if (bnav) bnav.style.gridTemplateColumns = isPL ? "repeat(6, 1fr)" : "repeat(5, 1fr)";
+  if (!isPL && currentView === "lektor") switchTab("self");
+  if (allVehicles.length) { renderFavorites(); renderCategories(); renderVehicles(); }
 }
 
 function t(en, pl) {
@@ -548,6 +556,37 @@ function renderCategories() {
   }
 }
 
+let favVehicles = [];
+try { favVehicles = JSON.parse(localStorage.getItem("gta6-fav-vehicles") || "[]"); } catch (e) { favVehicles = []; }
+if (!Array.isArray(favVehicles)) favVehicles = [];
+
+function toggleFavVehicle(name, ev) {
+  if (ev) ev.stopPropagation();
+  const idx = favVehicles.indexOf(name);
+  if (idx >= 0) favVehicles.splice(idx, 1);
+  else favVehicles.push(name);
+  try { localStorage.setItem("gta6-fav-vehicles", JSON.stringify(favVehicles)); } catch (e) {}
+  renderFavorites();
+  renderVehicles();
+}
+
+function renderFavorites() {
+  const wrap = document.getElementById("fav-veh-wrap");
+  const bar = document.getElementById("fav-veh");
+  if (!wrap || !bar) return;
+  if (!favVehicles.length) { wrap.style.display = "none"; return; }
+  wrap.style.display = "block";
+  bar.innerHTML = "";
+  for (const name of favVehicles) {
+    const v = allVehicles.find(x => x.name === name);
+    const btn = document.createElement("button");
+    btn.className = "chip active";
+    btn.textContent = "⭐ " + (v ? (v.display || v.name) : name);
+    btn.onclick = () => spawnVeh(name);
+    bar.appendChild(btn);
+  }
+}
+
 function renderVehicles() {
   const q = document.getElementById("veh-search").value.trim().toLowerCase();
   const filtered = allVehicles.filter(v => {
@@ -562,11 +601,18 @@ function renderVehicles() {
   const grid = document.getElementById("veh-grid");
   grid.innerHTML = "";
   for (const v of filtered) {
+    const isFav = favVehicles.includes(v.name);
     const btn = document.createElement("button");
     btn.className = "veh-card";
     btn.innerHTML = `<div class="veh-name"></div><div class="veh-cat"></div>`;
     btn.firstChild.textContent = v.display || v.name;
     btn.lastChild.textContent = catLabel(v.category || "Inne");
+    const star = document.createElement("span");
+    star.className = "fav-star" + (isFav ? " on" : "");
+    star.textContent = isFav ? "★" : "☆";
+    star.title = isFav ? t("Remove from favorites", "Usuń z ulubionych") : t("Add to favorites", "Dodaj do ulubionych");
+    star.onclick = (ev) => toggleFavVehicle(v.name, ev);
+    btn.appendChild(star);
     btn.onclick = () => spawnVeh(v.name);
     grid.appendChild(btn);
   }
@@ -587,6 +633,7 @@ async function init() {
     btn.onclick = () => spawnVeh(name);
     quick.appendChild(btn);
   }
+  renderFavorites();
   renderCategories();
   renderVehicles();
   refreshStatus();
@@ -619,9 +666,12 @@ init();
   }
 
   function stepTab(dir) {
-    let cur = TAB_ORDER.indexOf(currentView);
+    const tabs = currentLang === "pl"
+      ? ["self", "vehicles", "world", "lektor", "money", "ps5"]
+      : ["self", "vehicles", "world", "money", "ps5"];
+    let cur = tabs.indexOf(currentView);
     if (cur < 0) cur = 0;
-    const next = TAB_ORDER[(cur + dir + TAB_ORDER.length) % TAB_ORDER.length];
+    const next = tabs[(cur + dir + tabs.length) % tabs.length];
     switchTab(next);
     setTimeout(() => setFocus(0), 30);
   }

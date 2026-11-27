@@ -26,7 +26,7 @@
 #include "web_assets.h"
 
 #define HTTP_PORT 8080
-#define TRAINER_VERSION "ELF v1.0.6"
+#define TRAINER_VERSION "ELF v1.1.0"
 #define PS5DBG_MAGIC 0xFFAABBCCu
 #define CMD_SUCCESS  0x80000000u
 
@@ -97,6 +97,14 @@ typedef struct {
     SubEntry sub_hist[SUB_HIST_MAX];
     int sub_hist_cnt;
     char sub_last_text[256];
+    uint64_t money_addrs[32];
+    int money_addr_cnt;
+    char money_mode[24];
+    char money_note[192];
+    volatile bool money_cancel;
+    uint64_t money_watch_addrs[64];
+    int32_t money_watch_vals[64];
+    int money_watch_cnt;
     int frozen_h;
     int frozen_m;
     char last_error[256];
@@ -110,6 +118,7 @@ static TrainerState G = {
     .auto_connect = true,
     .ps5_notify = true,
     .lektor_rate = 195,
+    .money_mode = "idle",
     .frozen_h = 12,
     .frozen_m = 0,
 };
@@ -217,6 +226,36 @@ static int dbg_scan_u32(int fd, int pid, uint64_t addr, uint32_t length, uint32_
         if (!blk) return -1;
         if (recv_all(fd, blk, (size_t)blen) < 0) { free(blk); return -1; }
         for (uint64_t i = 0; i + 8 <= blen; i += 8) {
+            if (cnt < max_out) {
+                uint32_t off = 0;
+                memcpy(&off, blk + i, 4);
+                out_offs[cnt++] = off;
+            }
+        }
+        free(blk);
+    }
+    if (dbg_expect_ok(fd) < 0) return -1;
+    return cnt;
+}
+
+static int dbg_scan_u64(int fd, int pid, uint64_t addr, uint32_t length, uint64_t val, uint32_t *out_offs, int max_out) {
+    struct __attribute__((packed)) {
+        uint32_t pid; uint64_t addr; uint32_t length;
+        uint8_t vtype; uint8_t ctype; uint8_t align; uint32_t lenData;
+    } req = {(uint32_t)pid, addr, length, 6, 0, 8, 8}; /* 6 = UINT64 */
+    if (dbg_send_cmd(fd, CMD_PROC_SCAN_START, &req, sizeof(req)) < 0) return -1;
+    if (dbg_expect_ok(fd) < 0) return -1;
+    if (send_all(fd, &val, 8) < 0) return -1;
+    if (dbg_expect_ok(fd) < 0) return -1;
+    int cnt = 0;
+    for (;;) {
+        uint64_t blen = 0;
+        if (recv_all(fd, &blen, 8) < 0) return -1;
+        if (blen == 0xFFFFFFFFFFFFFFFFULL) break;
+        uint8_t *blk = (uint8_t *)malloc((size_t)blen);
+        if (!blk) return -1;
+        if (recv_all(fd, blk, (size_t)blen) < 0) { free(blk); return -1; }
+        for (uint64_t i = 0; i + 12 <= blen; i += 12) {
             if (cnt < max_out) {
                 uint32_t off = 0;
                 memcpy(&off, blk + i, 4);
@@ -641,7 +680,188 @@ static uint64_t get_ped_and_handle(uint32_t *out_handle) {
     return ped;
 }
 
-/* ---------- Background loop (God Mode / Never Wanted / Freeze Time) ---------- */
+/* ---------- Money Scanner (Dedicated TCP Channel in C) ---------- */
+
+static int money_scan_stats_c(const char *host, int port, int pid, uint64_t *out_addrs, int32_t *out_vals, int max_out) {
+    int fd = tcp_connect(host, port);
+    if (fd < 0) return -1;
+    if (dbg_auth(fd) < 0) { close(fd); return -1; }
+    uint32_t req = (uint32_t)pid;
+    if (dbg_send_cmd(fd, CMD_PROC_MAPS, &req, 4) < 0 || dbg_expect_ok(fd) < 0) { close(fd); return -1; }
+    uint32_t mcnt = 0;
+    if (recv_all(fd, &mcnt, 4) < 0 || mcnt > 32768) { close(fd); return -1; }
+    typedef struct { uint64_t s, e; } Range;
+    Range ranges[64];
+    int rcnt = 0;
+    for (uint32_t i = 0; i < mcnt; i++) {
+        struct __attribute__((packed)) { char name[32]; uint64_t s, e, off; uint16_t prot; } m;
+        if (recv_all(fd, &m, sizeof(m)) < 0) { close(fd); return -1; }
+        if ((m.prot & 3) == 3 && !(m.prot & 4) && m.name[0] == '\0' &&
+            m.s >= 0x1000000000ULL && m.s < 0x1060000000ULL && (m.e - m.s) >= 0x100000ULL && rcnt < 64) {
+            ranges[rcnt].s = m.s; ranges[rcnt].e = m.e; rcnt++;
+        }
+    }
+    int found = 0;
+    static const uint64_t STAT_HDR = 0x000000011E720953ULL;
+    for (int r = 0; r < rcnt && !G.money_cancel; r++) {
+        uint64_t addr = ranges[r].s;
+        while (addr < ranges[r].e && !G.money_cancel) {
+            uint32_t len = (uint32_t)((ranges[r].e - addr > 0x10000000ULL) ? 0x10000000ULL : (ranges[r].e - addr));
+            uint32_t offs[128];
+            int n = dbg_scan_u64(fd, pid, addr, len, STAT_HDR, offs, 128);
+            if (n < 0) break;
+            for (int i = 0; i < n && found < max_out && !G.money_cancel; i++) {
+                uint64_t va = addr + offs[i] + 8;
+                int32_t v = 0;
+                if (dbg_read(fd, pid, va, &v, 4) == 0 && v >= 0 && v <= 2000000000) {
+                    out_addrs[found] = va;
+                    out_vals[found] = v;
+                    found++;
+                }
+            }
+            addr += len;
+        }
+    }
+    close(fd);
+    return found;
+}
+
+static int money_scan_hud_c(const char *host, int port, int pid, int32_t amount, uint64_t *out_addrs, int max_out) {
+    int fd = tcp_connect(host, port);
+    if (fd < 0) return -1;
+    if (dbg_auth(fd) < 0) { close(fd); return -1; }
+    uint32_t req = (uint32_t)pid;
+    if (dbg_send_cmd(fd, CMD_PROC_MAPS, &req, 4) < 0 || dbg_expect_ok(fd) < 0) { close(fd); return -1; }
+    uint32_t mcnt = 0;
+    if (recv_all(fd, &mcnt, 4) < 0 || mcnt > 32768) { close(fd); return -1; }
+    typedef struct { uint64_t s, e; } Range;
+    Range ranges[64];
+    int rcnt = 0;
+    for (uint32_t i = 0; i < mcnt; i++) {
+        struct __attribute__((packed)) { char name[32]; uint64_t s, e, off; uint16_t prot; } m;
+        if (recv_all(fd, &m, sizeof(m)) < 0) { close(fd); return -1; }
+        if ((m.prot & 3) == 3 && !(m.prot & 4) && m.name[0] == '\0' &&
+            m.s >= 0x1100000000ULL && m.s < 0x1200000000ULL && (m.e - m.s) >= 0x100000ULL && rcnt < 64) {
+            ranges[rcnt].s = m.s; ranges[rcnt].e = m.e; rcnt++;
+        }
+    }
+    int found = 0;
+    uint64_t pat = 0x00010000ULL | (((uint64_t)(uint32_t)amount) << 32);
+    for (int r = 0; r < rcnt && !G.money_cancel; r++) {
+        uint64_t addr = ranges[r].s;
+        while (addr < ranges[r].e && !G.money_cancel) {
+            uint32_t len = (uint32_t)((ranges[r].e - addr > 0x10000000ULL) ? 0x10000000ULL : (ranges[r].e - addr));
+            uint32_t offs[1024];
+            int n = dbg_scan_u64(fd, pid, addr, len, pat, offs, 1024);
+            if (n < 0) break;
+            for (int i = 0; i < n && found + 1 < max_out && !G.money_cancel; i++) {
+                uint64_t a = addr + offs[i];
+                uint32_t ctx[6];
+                if (dbg_read(fd, pid, a, ctx, sizeof(ctx)) == 0) {
+                    if (ctx[0] == 0x00010000u && (int32_t)ctx[1] == amount && (int32_t)ctx[2] == amount &&
+                        ctx[4] == 5u && ctx[5] == 10u) {
+                        out_addrs[found++] = a + 4;
+                        out_addrs[found++] = a + 8;
+                    }
+                }
+            }
+            addr += len;
+        }
+    }
+    close(fd);
+    return found;
+}
+
+typedef struct { char host[64]; int port; int pid; int32_t amount; bool has_filter; } MoneyTask;
+
+static void *money_manual_worker(void *arg) {
+    MoneyTask *mt = (MoneyTask *)arg;
+    uint64_t found[32];
+    int cnt = 0;
+    int hcnt = money_scan_hud_c(mt->host, mt->port, mt->pid, mt->amount, found, 24);
+    if (hcnt > 0) cnt = hcnt;
+    if (!G.money_cancel) {
+        uint64_t saddrs[64]; int32_t svals[64];
+        int scnt = money_scan_stats_c(mt->host, mt->port, mt->pid, saddrs, svals, 64);
+        for (int i = 0; i < scnt && cnt < 32; i++) {
+            if (svals[i] == mt->amount) found[cnt++] = saddrs[i];
+        }
+    }
+    pthread_mutex_lock(&G.lock);
+    if (!G.money_cancel && G.pid == mt->pid && strcmp(G.money_mode, "manual_scanning") == 0) {
+        if (cnt > 0) {
+            memcpy(G.money_addrs, found, (size_t)cnt * sizeof(uint64_t));
+            G.money_addr_cnt = cnt;
+            snprintf(G.money_mode, sizeof(G.money_mode), "locked");
+            snprintf(G.money_note, sizeof(G.money_note), "Wallet locked ($%d, %d addresses)!", mt->amount, cnt);
+            dbg_notify(G.money_note);
+        } else {
+            snprintf(G.money_mode, sizeof(G.money_mode), "idle");
+            snprintf(G.money_note, sizeof(G.money_note), "Amount $%d not found. Try Auto-Detect.", mt->amount);
+        }
+    }
+    pthread_mutex_unlock(&G.lock);
+    free(mt);
+    return NULL;
+}
+
+static void *money_auto_worker(void *arg) {
+    MoneyTask *mt = (MoneyTask *)arg;
+    uint64_t saddrs[64]; int32_t svals[64];
+    int scnt = money_scan_stats_c(mt->host, mt->port, mt->pid, saddrs, svals, 64);
+    pthread_mutex_lock(&G.lock);
+    if (!G.money_cancel && G.pid == mt->pid && strcmp(G.money_mode, "auto_scanning") == 0 && scnt > 0) {
+        int wcnt = 0;
+        if (mt->has_filter) {
+            for (int i = 0; i < scnt && wcnt < 64; i++) {
+                if (svals[i] == mt->amount) {
+                    G.money_watch_addrs[wcnt] = saddrs[i];
+                    G.money_watch_vals[wcnt] = svals[i];
+                    wcnt++;
+                }
+            }
+        }
+        if (wcnt == 0) {
+            wcnt = scnt > 64 ? 64 : scnt;
+            for (int i = 0; i < wcnt; i++) {
+                G.money_watch_addrs[i] = saddrs[i];
+                G.money_watch_vals[i] = svals[i];
+            }
+        }
+        G.money_watch_cnt = wcnt;
+        snprintf(G.money_mode, sizeof(G.money_mode), "auto_watching");
+        snprintf(G.money_note, sizeof(G.money_note),
+                 "AUTO active (%d stats) — earn or spend $1 in game to capture!", wcnt);
+    } else if (strcmp(G.money_mode, "auto_scanning") == 0) {
+        snprintf(G.money_mode, sizeof(G.money_mode), "idle");
+        snprintf(G.money_note, sizeof(G.money_note), "Auto scan failed or cancelled.");
+    }
+    pthread_mutex_unlock(&G.lock);
+    free(mt);
+    return NULL;
+}
+
+static void *money_enrich_hud_worker(void *arg) {
+    MoneyTask *mt = (MoneyTask *)arg;
+    uint64_t hud[16];
+    int hcnt = money_scan_hud_c(mt->host, mt->port, mt->pid, mt->amount, hud, 16);
+    if (hcnt > 0) {
+        pthread_mutex_lock(&G.lock);
+        if (G.pid == mt->pid && strcmp(G.money_mode, "locked") == 0) {
+            uint64_t merged[32]; int mcnt = 0;
+            for (int i = 0; i < hcnt && mcnt < 32; i++) merged[mcnt++] = hud[i];
+            for (int i = 0; i < G.money_addr_cnt && mcnt < 32; i++) merged[mcnt++] = G.money_addrs[i];
+            memcpy(G.money_addrs, merged, (size_t)mcnt * sizeof(uint64_t));
+            G.money_addr_cnt = mcnt;
+            snprintf(G.money_note, sizeof(G.money_note), "Auto-captured ($%d, %d addrs + HUD)!", mt->amount, mcnt);
+        }
+        pthread_mutex_unlock(&G.lock);
+    }
+    free(mt);
+    return NULL;
+}
+
+/* ---------- Background loop (God Mode / Never Wanted / Freeze Time / Auto Money) ---------- */
 
 static void *bg_thread_fn(void *arg) {
     (void)arg;
@@ -673,6 +893,32 @@ static void *bg_thread_fn(void *arg) {
             }
             if (G.freeze_time && (tick % 2 == 0)) {
                 game_call(G.base + OFF_CLOCK_SET_TIME, (uint64_t)G.frozen_h, (uint64_t)G.frozen_m, 0, 0, 0);
+            }
+        }
+        if (G.connected && strcmp(G.money_mode, "auto_watching") == 0 && G.money_watch_cnt > 0 && (tick % 6 == 0)) {
+            uint64_t ch_addrs[32]; int32_t ch_val = -1; int ch_cnt = 0;
+            for (int i = 0; i < G.money_watch_cnt; i++) {
+                int32_t v = 0;
+                if (dbg_read(G.sock, G.pid, G.money_watch_addrs[i], &v, 4) == 0 &&
+                    v != G.money_watch_vals[i] && v >= 0 && v <= 2000000000) {
+                    if (ch_cnt == 0) ch_val = v;
+                    if (v == ch_val && ch_cnt < 32) ch_addrs[ch_cnt++] = G.money_watch_addrs[i];
+                }
+            }
+            if (ch_cnt > 0) {
+                memcpy(G.money_addrs, ch_addrs, (size_t)ch_cnt * sizeof(uint64_t));
+                G.money_addr_cnt = ch_cnt;
+                snprintf(G.money_mode, sizeof(G.money_mode), "locked");
+                snprintf(G.money_note, sizeof(G.money_note), "Auto-captured ($%d, %d stats)!", ch_val, ch_cnt);
+                dbg_notify(G.money_note);
+                MoneyTask *mt = (MoneyTask *)calloc(1, sizeof(MoneyTask));
+                if (mt) {
+                    snprintf(mt->host, sizeof(mt->host), "%s", G.host);
+                    mt->port = G.port; mt->pid = G.pid; mt->amount = ch_val;
+                    pthread_t th;
+                    pthread_create(&th, NULL, money_enrich_hud_worker, mt);
+                    pthread_detach(th);
+                }
             }
         }
         pthread_mutex_unlock(&G.lock);
@@ -817,7 +1063,7 @@ static void *subtitle_thread_fn(void *arg) {
 }
 
 static void build_status_json(char *buf, size_t sz) {
-    int h = -1, m = -1, wanted = -1;
+    int h = -1, m = -1, wanted = -1, money_val = -1;
     bool in_veh = false;
     if (G.connected && G.sock >= 0) {
         int32_t clk[6] = {0};
@@ -826,6 +1072,10 @@ static void build_status_json(char *buf, size_t sz) {
         }
         uint64_t veh = 0;
         if (dbg_read(G.sock, G.pid, G.base + OFF_LOCAL_PLAYER_VEH, &veh, 8) == 0) in_veh = (veh != 0);
+        if (G.money_addr_cnt > 0) {
+            int32_t mv = -1;
+            if (dbg_read(G.sock, G.pid, G.money_addrs[0], &mv, 4) == 0 && mv >= 0) money_val = mv;
+        }
     }
     int pos = snprintf(buf, sz,
         "{\"connected\":%s,\"version_ok\":%s,\"pid\":%d,\"titleid\":\"PPSA38500\",\"app_ver\":\"01.002.001\","
@@ -833,7 +1083,7 @@ static void build_status_json(char *buf, size_t sz) {
         "\"fw\":\"PS5\",\"kstuff\":true,\"etahen\":true,\"hook\":%s,\"in_vehicle\":%s,"
         "\"god_mode\":%s,\"never_wanted\":%s,\"freeze_time\":%s,\"ps5_notify\":%s,"
         "\"frozen_time\":\"%02d:%02d\",\"hour\":%d,\"minute\":%d,\"wanted\":%d,"
-        "\"money\":-1,\"money_mode\":\"idle\",\"lektor_enabled\":%s,\"lektor_mac_say\":false,"
+        "\"money\":%d,\"money_mode\":\"%s\",\"money_watch_note\":\"%s\",\"lektor_enabled\":%s,\"lektor_mac_say\":false,"
         "\"lektor_read_speaker\":%s,\"lektor_rate\":%d,\"subtitle_seq\":%d",
         G.connected ? "true" : "false",
         G.connected ? "true" : "false",
@@ -846,6 +1096,7 @@ static void build_status_json(char *buf, size_t sz) {
         G.freeze_time ? "true" : "false",
         G.ps5_notify ? "true" : "false",
         G.frozen_h, G.frozen_m, h, m, wanted,
+        money_val, G.money_mode, G.money_note,
         G.lektor_enabled ? "true" : "false",
         G.lektor_read_speaker ? "true" : "false",
         G.lektor_rate,
@@ -1043,6 +1294,73 @@ static void handle_client(int cfd) {
         else if (strcmp(name, "lektor_read_speaker") == 0) G.lektor_read_speaker = (en != 0);
         snprintf(msg, sizeof(msg), "%s: %s", name, en ? "ON" : "OFF");
         dbg_notify(msg);
+    } else if (strcmp(path, "/api/money/find") == 0) {
+        int amt = 0;
+        json_get_int(body, "amount", &amt);
+        if (amt <= 0) {
+            ok = false;
+            snprintf(msg, sizeof(msg), "Enter exact cash > 0 (use Auto-Detect for $0)");
+        } else {
+            G.money_cancel = false;
+            G.money_addr_cnt = 0;
+            snprintf(G.money_mode, sizeof(G.money_mode), "manual_scanning");
+            snprintf(G.money_note, sizeof(G.money_note), "MANUAL: scanning PS5 RAM for $%d (~12s)...", amt);
+            MoneyTask *mt = (MoneyTask *)calloc(1, sizeof(MoneyTask));
+            snprintf(mt->host, sizeof(mt->host), "%s", G.host);
+            mt->port = G.port; mt->pid = G.pid; mt->amount = amt;
+            pthread_t th; pthread_create(&th, NULL, money_manual_worker, mt); pthread_detach(th);
+            snprintf(msg, sizeof(msg), "Started manual search for $%d...", amt);
+        }
+    } else if (strcmp(path, "/api/money/watch") == 0) {
+        int amt = 0;
+        bool has_f = json_get_int(body, "amount", &amt) && amt >= 0;
+        G.money_cancel = false;
+        G.money_addr_cnt = 0;
+        G.money_watch_cnt = 0;
+        snprintf(G.money_mode, sizeof(G.money_mode), "auto_scanning");
+        snprintf(G.money_note, sizeof(G.money_note), "AUTO: indexing wallet stats (~10s)...");
+        MoneyTask *mt = (MoneyTask *)calloc(1, sizeof(MoneyTask));
+        snprintf(mt->host, sizeof(mt->host), "%s", G.host);
+        mt->port = G.port; mt->pid = G.pid; mt->amount = amt; mt->has_filter = has_f;
+        pthread_t th; pthread_create(&th, NULL, money_auto_worker, mt); pthread_detach(th);
+        snprintf(msg, sizeof(msg), "Started Auto-Detect wallet watcher...");
+    } else if (strcmp(path, "/api/money/add") == 0) {
+        int delta = 0;
+        json_get_int(body, "delta", &delta);
+        if (G.money_addr_cnt <= 0) {
+            ok = false;
+            snprintf(msg, sizeof(msg), "Find wallet first (Manual or Auto-Detect)");
+        } else {
+            int32_t cur = 0;
+            dbg_read(G.sock, G.pid, G.money_addrs[0], &cur, 4);
+            int64_t nv = (int64_t)cur + (int64_t)delta;
+            if (nv < 0) nv = 0;
+            if (nv > 2000000000LL) nv = 2000000000LL;
+            int32_t nv32 = (int32_t)nv;
+            for (int i = 0; i < G.money_addr_cnt; i++) dbg_write(G.sock, G.pid, G.money_addrs[i], &nv32, 4);
+            snprintf(msg, sizeof(msg), "+$%d -> now $%d", delta, nv32);
+            dbg_notify(msg);
+        }
+    } else if (strcmp(path, "/api/money/set") == 0) {
+        int amt = 1000000;
+        json_get_int(body, "amount", &amt);
+        if (G.money_addr_cnt <= 0) {
+            ok = false;
+            snprintf(msg, sizeof(msg), "Find wallet first (Manual or Auto-Detect)");
+        } else {
+            if (amt < 0) amt = 0;
+            int32_t v = (int32_t)amt;
+            for (int i = 0; i < G.money_addr_cnt; i++) dbg_write(G.sock, G.pid, G.money_addrs[i], &v, 4);
+            snprintf(msg, sizeof(msg), "Cash set to $%d", v);
+            dbg_notify(msg);
+        }
+    } else if (strcmp(path, "/api/money/reset") == 0) {
+        G.money_cancel = true;
+        G.money_addr_cnt = 0;
+        G.money_watch_cnt = 0;
+        snprintf(G.money_mode, sizeof(G.money_mode), "idle");
+        G.money_note[0] = '\0';
+        snprintf(msg, sizeof(msg), "Wallet mode reset");
     } else if (strcmp(path, "/api/lektor/rate") == 0) {
         int r = 195;
         json_get_int(body, "rate", &r);
