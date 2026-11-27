@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -1264,6 +1265,71 @@ static void http_send(int fd, int code, const char *ct, const void *body, size_t
     if (len > 0 && body) send_all(fd, body, len);
 }
 
+/* ---- waypoint (map marker) teleport ------------------------------------- */
+#define OFF_WAYPOINT 0xAF93FC0ULL   /* x, y, z, present flag (float each) */
+
+static bool read_waypoint_pos(float *x, float *y, float *z, bool *present) {
+    float w[4] = {0, 0, 0, 0};
+    if (!G.connected || G.pid <= 0 || G.sock < 0) return false;
+    if (dbg_read(G.sock, G.pid, G.base + OFF_WAYPOINT, w, 16) < 0) return false;
+    *x = w[0]; *y = w[1]; *z = w[2];
+    if (present) *present = (w[3] > 0.5f);
+    return true;
+}
+
+/* Teleport the player (or the vehicle being driven) to the current map waypoint.
+ * Entity SetMatrix vtable slot 0x178, fresh per-call matrix buffer, +4 m z offset
+ * (verified: lower offsets spawn under the ground). */
+static bool teleport_to_waypoint(char *err, size_t errsz) {
+    float wx = 0, wy = 0, wz = 0;
+    bool present = false;
+    if (!read_waypoint_pos(&wx, &wy, &wz, &present)) {
+        snprintf(err, errsz, "cannot read waypoint");
+        return false;
+    }
+    if (!present || (fabsf(wx) < 1.0f && fabsf(wy) < 1.0f)) {
+        snprintf(err, errsz, "no waypoint on the map");
+        return false;
+    }
+    uint64_t ped = 0;
+    if (dbg_read(G.sock, G.pid, G.base + OFF_LOCAL_PLAYER_PED, &ped, 8) < 0 || !ped) {
+        snprintf(err, errsz, "enter Story Mode first (no player ped)");
+        return false;
+    }
+    uint64_t veh = 0;
+    (void)dbg_read(G.sock, G.pid, G.base + OFF_LOCAL_PLAYER_VEH, &veh, 8);
+    uint64_t ent = veh ? veh : ped;
+
+    uint8_t m[64];
+    if (dbg_read(G.sock, G.pid, ent + 0x40, m, 64) < 0) {
+        snprintf(err, errsz, "cannot read placement matrix");
+        return false;
+    }
+    float tz = wz + 4.0f;
+    int sx = (int)(wx / 32.0f), sy = (int)(wy / 32.0f);
+    float *mf = (float *)m;
+    mf[12] = wx - 32.0f * (float)sx;
+    mf[13] = wy - 32.0f * (float)sy;
+    mf[14] = tz;
+    int16_t sec[2] = {(int16_t)sx, (int16_t)sy};
+    memcpy(&mf[15], sec, 4);
+
+    uint64_t buf = dbg_alloc(G.sock, G.pid, 0x40);
+    if (!buf) { snprintf(err, errsz, "alloc failed"); return false; }
+    if (dbg_write(G.sock, G.pid, buf, m, 64) < 0) {
+        snprintf(err, errsz, "write matrix failed");
+        return false;
+    }
+    uint64_t vt = 0, fn = 0;
+    if (dbg_read(G.sock, G.pid, ent, &vt, 8) < 0 || !vt ||
+        dbg_read(G.sock, G.pid, vt + 0x178, &fn, 8) < 0 || !fn) {
+        snprintf(err, errsz, "SetMatrix vtable slot missing");
+        return false;
+    }
+    game_call8(fn, ent, buf, 1, 1, 0, 0, 0, 0);
+    return true;
+}
+
 static void handle_client(int cfd) {
     struct timeval ctv = {.tv_sec = 2, .tv_usec = 0};
     setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, &ctv, sizeof(ctv));
@@ -1291,6 +1357,20 @@ static void handle_client(int cfd) {
             http_send(cfd, 200, "image/svg+xml", ASSET_ICON_SVG, ASSET_ICON_SVG_len);
         } else if (strcmp(path, "/api/vehicles") == 0) {
             http_send(cfd, 200, "application/json; charset=utf-8", ASSET_VEHICLES_JSON, ASSET_VEHICLES_JSON_len);
+        } else if (strcmp(path, "/api/waypoint") == 0) {
+            float wx = 0, wy = 0, wz = 0;
+            bool present = false;
+            char stw[256];
+            bool okw;
+            pthread_mutex_lock(&G.lock);
+            okw = read_waypoint_pos(&wx, &wy, &wz, &present);
+            pthread_mutex_unlock(&G.lock);
+            if (okw)
+                snprintf(stw, sizeof(stw), "{\"ok\":true,\"present\":%s,\"x\":%.2f,\"y\":%.2f,\"z\":%.2f}",
+                         present ? "true" : "false", (double)wx, (double)wy, (double)wz);
+            else
+                snprintf(stw, sizeof(stw), "{\"ok\":false}");
+            http_send(cfd, 200, "application/json; charset=utf-8", stw, strlen(stw));
         } else if (strcmp(path, "/api/status") == 0) {
             char st[6144];
             pthread_mutex_lock(&G.lock);
@@ -1396,6 +1476,15 @@ static void handle_client(int cfd) {
         G.frozen_h = h; G.frozen_m = m;
         snprintf(msg, sizeof(msg), "Time set to %02d:%02d", h, m);
         dbg_notify(msg);
+    } else if (strcmp(path, "/api/teleport_waypoint") == 0) {
+            char terr[128] = {0};
+            if (teleport_to_waypoint(terr, sizeof(terr))) {
+                snprintf(msg, sizeof(msg), "teleported to waypoint");
+                dbg_notify(msg);
+            } else {
+                ok = false;
+                snprintf(msg, sizeof(msg), "%s", terr);
+            }
     } else if (strcmp(path, "/api/spawn") == 0) {
         char vname[64] = {0};
         json_get_str(body, "name", vname, sizeof(vname));
