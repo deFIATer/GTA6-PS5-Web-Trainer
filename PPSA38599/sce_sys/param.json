@@ -1,6 +1,7 @@
 {
   "applicationCategoryType": 65536,
-  "titleId": "PPSA38599",
+  "titleId": "GTAT80800",
+  "deeplinkUri": "http://127.0.0.1:8080/",
   "localizedParameters": {
     "defaultLanguage": "en-US",
     "en-US": {
@@ -9,6 +10,5 @@
     "pl-PL": {
       "titleName": "GTA VI Web Trainer"
     }
-  },
-  "deeplinkUri": "http://127.0.0.1:8080/"
+  }
 }

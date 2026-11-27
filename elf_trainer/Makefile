@@ -4,7 +4,7 @@ include $(PS5_PAYLOAD_SDK)/toolchain/prospero.mk
 
 ELF := GTA6WebTrainer.elf
 CFLAGS := -O2 -Wall -Wno-unused-function -pthread
-LDFLAGS := -pthread -lSceAppInstUtil
+LDFLAGS := -pthread -lSceIpmi -lSceAppInstUtil -lSceUserService -lSceSystemService
 
 all: $(ELF)
 

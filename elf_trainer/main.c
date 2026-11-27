@@ -17,8 +17,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <dlfcn.h>
 #include <unistd.h>
+#include <ps5/kernel.h>
 
 #include "tile_assets.h"
 #include "vehicles_data.h"
@@ -819,7 +819,7 @@ static void handle_client(int cfd) {
     close(cfd);
 }
 
-/* ---------- Automatic PS5 Home-Screen Media Tile Registration (PPSA38599) ---------- */
+/* ---------- Automatic PS5 Home-Screen Media Tile Registration (GTAT80800) ---------- */
 
 extern int sceAppInstUtilInitialize(void);
 extern int sceAppInstUtilTerminate(void);
@@ -833,24 +833,31 @@ static void write_file_bytes(const char *path, const unsigned char *data, size_t
     chmod(path, 0644);
 }
 
-static void register_home_tile(void) {
-    mkdir("/user/app/PPSA38599", 0755);
-    mkdir("/user/app/PPSA38599/sce_sys", 0755);
-    write_file_bytes("/user/app/PPSA38599/sce_sys/param.json", ASSET_PARAM_JSON, ASSET_PARAM_JSON_len);
-    write_file_bytes("/user/app/PPSA38599/sce_sys/icon0.png", ASSET_ICON0_PNG, ASSET_ICON0_PNG_len);
+static void *tile_thread_fn(void *arg) {
+    (void)arg;
+    const char *tid = "GTAT80800";
+    mkdir("/user/app", 0700);
+    mkdir("/user/app/GTAT80800", 0755);
+    mkdir("/user/app/GTAT80800/sce_sys", 0755);
+    write_file_bytes("/user/app/GTAT80800/sce_sys/param.json", ASSET_PARAM_JSON, ASSET_PARAM_JSON_len);
+    write_file_bytes("/user/app/GTAT80800/sce_sys/icon0.png", ASSET_ICON0_PNG, ASSET_ICON0_PNG_len);
 
     if (sceAppInstUtilInitialize() == 0) {
         typedef int (*install_dir_fn)(const char *, const char *, void *);
-        install_dir_fn fn = (install_dir_fn)dlsym(RTLD_DEFAULT, "Wudg3Xe3heE");
-        if (fn) fn("PPSA38599", "/user/app/", NULL);
-        else sceAppInstUtilAppInstallAll(NULL);
+        install_dir_fn install_dir = NULL;
+        uint32_t handle = 0;
+        if (kernel_dynlib_handle(-1, "libSceAppInstUtil.sprx", &handle) == 0) {
+            install_dir = (install_dir_fn)kernel_dynlib_resolve(-1, handle, "Wudg3Xe3heE");
+        }
+        int rc = install_dir ? install_dir(tid, "/user/app/", NULL) : sceAppInstUtilAppInstallAll(NULL);
         sceAppInstUtilTerminate();
+        if (rc == 0) dbg_notify("Media tile GTA VI Web Trainer installed!");
     }
+    return NULL;
 }
 
 int main(void) {
-    register_home_tile();
-    pthread_t bg, sub;
+    pthread_t bg, sub, tile;
     pthread_create(&bg, NULL, bg_thread_fn, NULL);
     pthread_detach(bg);
     pthread_create(&sub, NULL, subtitle_thread_fn, NULL);
@@ -873,6 +880,10 @@ int main(void) {
     }
     listen(sfd, 16);
     dbg_notify("Web Trainer ELF started! Port 8080");
+
+    /* Register Media tile asynchronously AFTER HTTP server is already live on :8080 */
+    pthread_create(&tile, NULL, tile_thread_fn, NULL);
+    pthread_detach(tile);
 
     for (;;) {
         int cfd = accept(sfd, NULL, NULL);
