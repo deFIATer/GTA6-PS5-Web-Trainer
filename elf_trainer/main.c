@@ -26,7 +26,7 @@
 #include "web_assets.h"
 
 #define HTTP_PORT 8080
-#define TRAINER_VERSION "ELF v1.1.0"
+#define TRAINER_VERSION "ELF v1.1.1"
 #define PS5DBG_MAGIC 0xFFAABBCCu
 #define CMD_SUCCESS  0x80000000u
 
@@ -772,14 +772,76 @@ static int money_scan_hud_c(const char *host, int port, int pid, int32_t amount,
     return found;
 }
 
+static int money_scan_master_c(const char *host, int port, int pid, int32_t amount, uint64_t *out_addrs, int max_out) {
+    int fd = tcp_connect(host, port);
+    if (fd < 0) return -1;
+    if (dbg_auth(fd) < 0) { close(fd); return -1; }
+    uint32_t req = (uint32_t)pid;
+    if (dbg_send_cmd(fd, CMD_PROC_MAPS, &req, 4) < 0 || dbg_expect_ok(fd) < 0) { close(fd); return -1; }
+    uint32_t mcnt = 0;
+    if (recv_all(fd, &mcnt, 4) < 0 || mcnt > 32768) { close(fd); return -1; }
+    typedef struct { uint64_t s, e; int kind; } MRange;
+    MRange ranges[64];
+    int rcnt = 0;
+    for (uint32_t i = 0; i < mcnt; i++) {
+        struct __attribute__((packed)) { char name[32]; uint64_t s, e, off; uint16_t prot; } m;
+        if (recv_all(fd, &m, sizeof(m)) < 0) { close(fd); return -1; }
+        if ((m.prot & 3) != 3 || (m.prot & 4) || m.name[0] != '\0' || (m.e - m.s) < 0x10000ULL || rcnt >= 64) continue;
+        int kind = 0;
+        if (m.s >= 0xF000000000ULL && m.s < 0xF100000000ULL) kind = 1;
+        else if (m.s >= 0xFA00000000ULL && m.s < 0xFB00000000ULL) kind = 2;
+        else if (m.s >= 0x1100000000ULL && m.s < 0x1200000000ULL) kind = 3;
+        if (kind) { ranges[rcnt].s = m.s; ranges[rcnt].e = m.e; ranges[rcnt].kind = kind; rcnt++; }
+    }
+    int found = 0;
+    for (int r = 0; r < rcnt && !G.money_cancel; r++) {
+        uint64_t addr = ranges[r].s;
+        while (addr < ranges[r].e && !G.money_cancel) {
+            uint32_t len = (uint32_t)((ranges[r].e - addr > 0x10000000ULL) ? 0x10000000ULL : (ranges[r].e - addr));
+            uint32_t offs[1024];
+            if (ranges[r].kind == 1 || ranges[r].kind == 2) {
+                int n = dbg_scan_u32(fd, pid, addr, len, (uint32_t)amount, offs, 1024);
+                for (int i = 0; i < n && found < max_out && !G.money_cancel; i++) {
+                    uint64_t a = addr + offs[i];
+                    uint32_t ctx[6];
+                    if (dbg_read(fd, pid, a - 16, ctx, sizeof(ctx)) == 0) {
+                        if (ranges[r].kind == 1 && (ctx[2] & 0x00FFFFFFu) == 0x00AF2E50u && ctx[3] == 0x00000804u) {
+                            out_addrs[found++] = a;
+                        } else if (ranges[r].kind == 2 && ctx[1] == 0x6F0A8D01u) {
+                            out_addrs[found++] = a;
+                        }
+                    }
+                }
+            } else {
+                int n = dbg_scan_u32(fd, pid, addr, len, 0x6F0A8D01u, offs, 1024);
+                for (int i = 0; i < n && found < max_out && !G.money_cancel; i++) {
+                    uint64_t a = addr + offs[i] - 20;
+                    struct __attribute__((packed)) { int32_t v; uint32_t z; uint64_t flag; } c;
+                    if (dbg_read(fd, pid, a, &c, sizeof(c)) == 0 &&
+                        c.v == amount && c.z == 0 && c.flag == 0x8000000000000000ULL) {
+                        out_addrs[found++] = a;
+                    }
+                }
+            }
+            addr += len;
+        }
+    }
+    close(fd);
+    return found;
+}
+
 typedef struct { char host[64]; int port; int pid; int32_t amount; bool has_filter; } MoneyTask;
 
 static void *money_manual_worker(void *arg) {
     MoneyTask *mt = (MoneyTask *)arg;
     uint64_t found[32];
     int cnt = 0;
-    int hcnt = money_scan_hud_c(mt->host, mt->port, mt->pid, mt->amount, found, 24);
-    if (hcnt > 0) cnt = hcnt;
+    int mcnt = money_scan_master_c(mt->host, mt->port, mt->pid, mt->amount, found, 12);
+    if (mcnt > 0) cnt += mcnt;
+    if (!G.money_cancel) {
+        int hcnt = money_scan_hud_c(mt->host, mt->port, mt->pid, mt->amount, found + cnt, 28 - cnt);
+        if (hcnt > 0) cnt += hcnt;
+    }
     if (!G.money_cancel) {
         uint64_t saddrs[64]; int32_t svals[64];
         int scnt = money_scan_stats_c(mt->host, mt->port, mt->pid, saddrs, svals, 64);
@@ -843,17 +905,21 @@ static void *money_auto_worker(void *arg) {
 
 static void *money_enrich_hud_worker(void *arg) {
     MoneyTask *mt = (MoneyTask *)arg;
-    uint64_t hud[16];
-    int hcnt = money_scan_hud_c(mt->host, mt->port, mt->pid, mt->amount, hud, 16);
-    if (hcnt > 0) {
+    uint64_t extra[24];
+    int ecnt = 0;
+    int mcnt = money_scan_master_c(mt->host, mt->port, mt->pid, mt->amount, extra, 12);
+    if (mcnt > 0) ecnt += mcnt;
+    int hcnt = money_scan_hud_c(mt->host, mt->port, mt->pid, mt->amount, extra + ecnt, 24 - ecnt);
+    if (hcnt > 0) ecnt += hcnt;
+    if (ecnt > 0) {
         pthread_mutex_lock(&G.lock);
         if (G.pid == mt->pid && strcmp(G.money_mode, "locked") == 0) {
-            uint64_t merged[32]; int mcnt = 0;
-            for (int i = 0; i < hcnt && mcnt < 32; i++) merged[mcnt++] = hud[i];
-            for (int i = 0; i < G.money_addr_cnt && mcnt < 32; i++) merged[mcnt++] = G.money_addrs[i];
-            memcpy(G.money_addrs, merged, (size_t)mcnt * sizeof(uint64_t));
-            G.money_addr_cnt = mcnt;
-            snprintf(G.money_note, sizeof(G.money_note), "Auto-captured ($%d, %d addrs + HUD)!", mt->amount, mcnt);
+            uint64_t merged[32]; int tot = 0;
+            for (int i = 0; i < ecnt && tot < 32; i++) merged[tot++] = extra[i];
+            for (int i = 0; i < G.money_addr_cnt && tot < 32; i++) merged[tot++] = G.money_addrs[i];
+            memcpy(G.money_addrs, merged, (size_t)tot * sizeof(uint64_t));
+            G.money_addr_cnt = tot;
+            snprintf(G.money_note, sizeof(G.money_note), "Auto-captured ($%d, %d addrs + Master/HUD)!", mt->amount, tot);
         }
         pthread_mutex_unlock(&G.lock);
     }

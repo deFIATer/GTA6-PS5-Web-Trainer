@@ -2,6 +2,10 @@
 
 All notable changes to **GTA VI PS5 Web Trainer** are documented in this file.
 
+## [v1.1.1] - 2026-11-27
+### Fixed
+- **Real In-Game Cash Modification (ELF & Python)**: Added scanning and updating of the 3 authoritative master wallet copies in `0xf000000000` (RAGEVM register, `50 2e af ?? 04 08 00 00`), `0xfa00000000` (script wallet, tag `0x6F0A8D01`), and `0x11...` (`0x8000000000000000` + `0x6F0A8D01`) alongside stats (`0x10...`) and HUD pairs (`0x11...`). Cash now updates immediately on screen and persists across transactions!
+
 ## [v1.1.0] - 2026-11-27
 ### Added
 - **Working Money Tab in Standalone `GTA6WebTrainer.elf`**: Implemented full Manual (`/api/money/find`), Auto-Detect (`/api/money/watch`), Add/Set/Reset wallet scanner in C on a dedicated TCP channel (HUD pairs in `0x11...` + stat entries in `0x10...`).

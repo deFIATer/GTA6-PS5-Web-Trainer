@@ -125,6 +125,80 @@ class MoneyMixin:
             except Exception:
                 pass
 
+    def _scan_master_wallet_dedicated(
+        self, host: str, port: int, pid: int, amount: int
+    ) -> list[int]:
+        """Scan master RAGEVM/script wallet copies in 0xf0.. (13MB), 0xfa.. (20MB) and 0x11.. (tag 0x6F0A8D01)."""
+        scan_ps5 = PS5Debug(host, port=port)
+        scan_ps5.connect()
+        try:
+            scan_ps5.authenticate()
+            maps = scan_ps5.maps(pid)
+            found: list[int] = []
+            for m in maps:
+                if self._money_cancel_event.is_set():
+                    break
+                if (m.prot & 3) != 3 or (m.prot & 4) or m.name != "" or (m.end - m.start) < 0x10000:
+                    continue
+                is_f0 = 0xF000000000 <= m.start < 0xF100000000
+                is_fa = 0xFA00000000 <= m.start < 0xFB00000000
+                is_11 = 0x1100000000 <= m.start < 0x1200000000
+                if not (is_f0 or is_fa or is_11):
+                    continue
+                addr = m.start
+                while addr < m.end and not self._money_cancel_event.is_set():
+                    length = min(0x10000000, m.end - addr)
+                    if is_f0 or is_fa:
+                        res = proc_scan_start(
+                            scan_ps5.connection,
+                            pid,
+                            addr,
+                            length,
+                            int(ScanValueType.UINT32),
+                            int(ScanCompareType.EXACT_VALUE),
+                            4,
+                            amount & 0xFFFFFFFF,
+                        )
+                        for off, _ in res:
+                            a = addr + off
+                            try:
+                                ctx = scan_ps5.read(pid, a - 16, 24)
+                                u = struct.unpack("<6I", ctx)
+                                if is_f0 and (u[2] & 0x00FFFFFF) == 0x00AF2E50 and u[3] == 0x00000804:
+                                    found.append(a)
+                                elif is_fa and u[1] == 0x6F0A8D01:
+                                    found.append(a)
+                            except Exception:
+                                pass
+                    elif is_11:
+                        # Tag 0x6F0A8D01 sits at +20 from cash value; +8 is 0x8000000000000000
+                        res = proc_scan_start(
+                            scan_ps5.connection,
+                            pid,
+                            addr,
+                            length,
+                            int(ScanValueType.UINT32),
+                            int(ScanCompareType.EXACT_VALUE),
+                            4,
+                            0x6F0A8D01,
+                        )
+                        for off, _ in res:
+                            a = addr + off - 20
+                            try:
+                                ctx = scan_ps5.read(pid, a, 24)
+                                v, z, hi_flag = struct.unpack("<iIQ", ctx[:16])
+                                if v == amount and z == 0 and hi_flag == 0x8000000000000000:
+                                    found.append(a)
+                            except Exception:
+                                pass
+                    addr += length
+            return found
+        finally:
+            try:
+                scan_ps5.close()
+            except Exception:
+                pass
+
     def start_money_auto_watch(self, expected_amount: int | None = None) -> dict[str, Any]:
         """Start explicit Auto-Detection mode (works from $0; optional current amount narrows candidates)."""
         amt_filter: int | None = None
@@ -212,7 +286,10 @@ class MoneyMixin:
 
         def worker() -> None:
             try:
-                matched = self._scan_hud_wallet_pairs_dedicated(host, port, pid, current_amount)
+                matched = self._scan_master_wallet_dedicated(host, port, pid, current_amount)
+                if self._money_cancel_event.is_set():
+                    return
+                matched.extend(self._scan_hud_wallet_pairs_dedicated(host, port, pid, current_amount))
                 if self._money_cancel_event.is_set():
                     return
                 stat_snap = self._scan_stat_entries_dedicated(host, port, pid)

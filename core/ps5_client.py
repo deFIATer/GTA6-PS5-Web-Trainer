@@ -536,7 +536,7 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
                 "base": hex(self.base) if self.base else None,
                 "titleid": self.titleid,
                 "app_ver": self.app_ver,
-                "trainer_version": "Python v1.1.0",
+                "trainer_version": "Python v1.1.1",
                 "is_elf": False,
                 "fw": self.fw_str,
                 "kstuff": self.kstuff_active,
@@ -577,7 +577,7 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
                 "base": hex(self.base) if self.base else None,
                 "titleid": self.titleid,
                 "app_ver": self.app_ver,
-                "trainer_version": "Python v1.1.0",
+                "trainer_version": "Python v1.1.1",
                 "is_elf": False,
                 "fw": self.fw_str,
                 "kstuff": self.kstuff_active,
@@ -835,22 +835,26 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
 
                                 def _enrich_hud() -> None:
                                     try:
+                                        master_hits = self._scan_master_wallet_dedicated(
+                                            h_host, h_port, h_pid, h_val
+                                        )
                                         hud_hits = self._scan_hud_wallet_pairs_dedicated(
                                             h_host, h_port, h_pid, h_val
                                         )
-                                        if not hud_hits:
+                                        extra = master_hits + hud_hits
+                                        if not extra:
                                             return
                                         with self.lock:
                                             if self.pid != h_pid or self.money_mode != "locked":
                                                 return
-                                            merged = list(dict.fromkeys(hud_hits + self.money_candidates))
+                                            merged = list(dict.fromkeys(extra + self.money_candidates))
                                             self.money_candidates = merged
                                             self.money_watch_note = (
                                                 f"Przechwycono automatycznie (${h_val:,}, {len(merged)} adresy + HUD)!"
                                             ).replace(",", " ")
                                             self._save_session_cache()
                                             self._log(
-                                                f"Auto-money enriched with HUD addrs={[hex(a) for a in hud_hits]}"
+                                                f"Auto-money enriched with master+HUD addrs={[hex(a) for a in extra]}"
                                             )
                                     except Exception:
                                         pass
