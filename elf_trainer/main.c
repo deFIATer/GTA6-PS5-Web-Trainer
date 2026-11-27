@@ -31,6 +31,9 @@
 #define CMD_PROC_MAPS    0xBDAA0004u
 #define CMD_PROC_PROTECT 0xBDAA0008u
 #define CMD_PROC_ALLOC   0xBDAA000Bu
+#define CMD_PROC_SCAN_START 0xBDAACC01u
+#define CMD_PROC_AUTH       0xBDAACCFFu
+#define CMD_PROC_AUTH_MAGIC 0xBB40E64Du
 #define CMD_CONSOLE_NOTIFY 0xBDDD0004u
 
 /* PPSA38500 01.002.001 offsets relative to eboot.bin base */
@@ -51,6 +54,14 @@
 #define OFF_WANTED_LEVEL       0x5EFCULL
 
 typedef struct {
+    int seq;
+    char speaker[48];
+    char text[256];
+} SubEntry;
+
+#define SUB_HIST_MAX 16
+
+typedef struct {
     pthread_mutex_t lock;
     int sock;
     char host[64];
@@ -66,6 +77,13 @@ typedef struct {
     bool never_wanted;
     bool freeze_time;
     bool ps5_notify;
+    bool lektor_enabled;
+    bool lektor_read_speaker;
+    int lektor_rate;
+    int subtitle_seq;
+    SubEntry sub_hist[SUB_HIST_MAX];
+    int sub_hist_cnt;
+    char sub_last_text[256];
     int frozen_h;
     int frozen_m;
     char last_error[256];
@@ -77,6 +95,7 @@ static TrainerState G = {
     .host = "127.0.0.1",
     .port = 744,
     .ps5_notify = true,
+    .lektor_rate = 195,
     .frozen_h = 12,
     .frozen_m = 0,
 };
@@ -141,6 +160,57 @@ static int dbg_expect_ok(int fd) {
     uint32_t st = 0;
     if (recv_all(fd, &st, 4) < 0) return -1;
     return (st == CMD_SUCCESS) ? 0 : -1;
+}
+
+static int dbg_auth(int fd) {
+    uint32_t req[2] = {CMD_PROC_AUTH_MAGIC, 2u};
+    if (dbg_send_cmd(fd, CMD_PROC_AUTH, req, 8) < 0) return -1;
+    if (dbg_expect_ok(fd) < 0) return -1;
+    uint16_t clen = 0;
+    if (recv_all(fd, &clen, 2) < 0 || clen != 64) return -1;
+    uint8_t chal[64], resp[64];
+    if (recv_all(fd, chal, 64) < 0) return -1;
+    uint32_t s1 = 200, s2 = 300, s3 = 400, s4 = 500;
+    for (int i = 0; i < 64; i++) {
+        s1 = ((s1 << 18) & 0xFFF80000u) ^ ((s1 ^ (s1 << 6)) >> 13);
+        s2 = ((s2 << 2)  & 0xFFFFFFE0u) ^ ((s2 ^ (s2 << 2)) >> 27);
+        s3 = ((s3 << 7)  & 0xFFFFF800u) ^ ((s3 ^ (s3 << 13)) >> 21);
+        s4 = ((s4 << 13) & 0xFFF00000u) ^ ((s4 ^ (s4 << 3)) >> 12);
+        uint8_t k = (uint8_t)((s1 ^ s2 ^ s3 ^ s4) & 0xFFu);
+        resp[i] = chal[i] ^ k;
+    }
+    if (send_all(fd, resp, 64) < 0) return -1;
+    return dbg_expect_ok(fd);
+}
+
+static int dbg_scan_u32(int fd, int pid, uint64_t addr, uint32_t length, uint32_t val, uint32_t *out_offs, int max_out) {
+    struct __attribute__((packed)) {
+        uint32_t pid; uint64_t addr; uint32_t length;
+        uint8_t vtype; uint8_t ctype; uint8_t align; uint32_t lenData;
+    } req = {(uint32_t)pid, addr, length, 4, 0, 1, 4};
+    if (dbg_send_cmd(fd, CMD_PROC_SCAN_START, &req, sizeof(req)) < 0) return -1;
+    if (dbg_expect_ok(fd) < 0) return -1;
+    if (send_all(fd, &val, 4) < 0) return -1;
+    if (dbg_expect_ok(fd) < 0) return -1;
+    int cnt = 0;
+    for (;;) {
+        uint64_t blen = 0;
+        if (recv_all(fd, &blen, 8) < 0) return -1;
+        if (blen == 0xFFFFFFFFFFFFFFFFULL) break;
+        uint8_t *blk = (uint8_t *)malloc((size_t)blen);
+        if (!blk) return -1;
+        if (recv_all(fd, blk, (size_t)blen) < 0) { free(blk); return -1; }
+        for (uint64_t i = 0; i + 8 <= blen; i += 8) {
+            if (cnt < max_out) {
+                uint32_t off = 0;
+                memcpy(&off, blk + i, 4);
+                out_offs[cnt++] = off;
+            }
+        }
+        free(blk);
+    }
+    if (dbg_expect_ok(fd) < 0) return -1;
+    return cnt;
 }
 
 static int dbg_notify(const char *msg) {
@@ -424,6 +494,108 @@ static bool json_get_int(const char *body, const char *key, int *out) {
     return true;
 }
 
+/* ---------- Dedicated Live Subtitle Scanner Thread (:~s~) ---------- */
+
+static bool parse_subtitle_buf(const uint8_t *raw, size_t len, size_t mpos, char *out_spk, size_t spk_sz, char *out_txt, size_t txt_sz) {
+    size_t start = mpos;
+    while (start > 0 && raw[start - 1] >= 0x20 && raw[start - 1] != 0x7F) start--;
+    size_t end = mpos;
+    while (end < len && raw[end] != 0) end++;
+    if (end <= mpos + 4) return false;
+
+    /* Speaker: everything after last '~' before ':~s~' */
+    size_t spk_start = start;
+    for (size_t i = start; i < mpos; i++) {
+        if (raw[i] == '~') spk_start = i + 1;
+    }
+    size_t si = 0;
+    for (size_t i = spk_start; i < mpos && si + 1 < spk_sz; i++) {
+        if (raw[i] >= 0x20) out_spk[si++] = (char)raw[i];
+    }
+    while (si > 0 && out_spk[si - 1] == ' ') si--;
+    out_spk[si] = '\0';
+
+    /* Dialogue: strip ~...~ tags after ':~s~' */
+    size_t di = 0;
+    bool in_tag = false;
+    for (size_t i = mpos + 4; i < end && di + 1 < txt_sz; i++) {
+        uint8_t ch = raw[i];
+        if (ch == '~') { in_tag = !in_tag; continue; }
+        if (in_tag) continue;
+        if (ch == '"' || ch == '\\') ch = '\'';
+        if (ch == '\r' || ch == '\n') ch = ' ';
+        if (ch < 0x20) continue;
+        if (ch == ' ' && (di == 0 || out_txt[di - 1] == ' ')) continue;
+        out_txt[di++] = (char)ch;
+    }
+    while (di > 0 && out_txt[di - 1] == ' ') di--;
+    out_txt[di] = '\0';
+    return di >= 2;
+}
+
+static void *subtitle_thread_fn(void *arg) {
+    (void)arg;
+    int sfd = -1;
+    int last_pid = 0;
+    const uint32_t marker = 0x7E737E3Au; /* ":~s~" little-endian */
+    for (;;) {
+        bool enabled = false;
+        int pid = 0;
+        char host[64];
+        int port = 744;
+        pthread_mutex_lock(&G.lock);
+        enabled = G.lektor_enabled && G.connected && G.pid > 0;
+        pid = G.pid;
+        snprintf(host, sizeof(host), "%s", G.host);
+        port = G.port;
+        pthread_mutex_unlock(&G.lock);
+
+        if (!enabled) {
+            if (sfd >= 0) { close(sfd); sfd = -1; }
+            usleep(400000);
+            continue;
+        }
+        if (sfd < 0 || last_pid != pid) {
+            if (sfd >= 0) close(sfd);
+            sfd = tcp_connect(host, port);
+            if (sfd < 0 || dbg_auth(sfd) < 0) {
+                if (sfd >= 0) { close(sfd); sfd = -1; }
+                usleep(1500000);
+                continue;
+            }
+            last_pid = pid;
+        }
+        uint32_t offs[16];
+        int n = dbg_scan_u32(sfd, pid, 0x1030000000ULL, 0x10000000u, marker, offs, 16);
+        if (n < 0) {
+            close(sfd); sfd = -1;
+            usleep(1000000);
+            continue;
+        }
+        for (int i = 0; i < n; i++) {
+            uint64_t a = 0x1030000000ULL + offs[i];
+            uint8_t raw[384];
+            if (dbg_read(sfd, pid, a - 64, raw, sizeof(raw)) < 0) continue;
+            char spk[48], txt[256];
+            if (!parse_subtitle_buf(raw, sizeof(raw), 64, spk, sizeof(spk), txt, sizeof(txt))) continue;
+            pthread_mutex_lock(&G.lock);
+            if (strcmp(txt, G.sub_last_text) != 0) {
+                snprintf(G.sub_last_text, sizeof(G.sub_last_text), "%s", txt);
+                G.subtitle_seq++;
+                if (G.sub_hist_cnt < SUB_HIST_MAX) G.sub_hist_cnt++;
+                for (int k = G.sub_hist_cnt - 1; k > 0; k--) G.sub_hist[k] = G.sub_hist[k - 1];
+                G.sub_hist[0].seq = G.subtitle_seq;
+                snprintf(G.sub_hist[0].speaker, sizeof(G.sub_hist[0].speaker), "%s", spk);
+                snprintf(G.sub_hist[0].text, sizeof(G.sub_hist[0].text), "%s", txt);
+            }
+            pthread_mutex_unlock(&G.lock);
+            break;
+        }
+        usleep(350000);
+    }
+    return NULL;
+}
+
 static void build_status_json(char *buf, size_t sz) {
     int h = -1, m = -1, wanted = -1;
     bool in_veh = false;
@@ -435,13 +607,13 @@ static void build_status_json(char *buf, size_t sz) {
         uint64_t veh = 0;
         if (dbg_read(G.sock, G.pid, G.base + OFF_LOCAL_PLAYER_VEH, &veh, 8) == 0) in_veh = (veh != 0);
     }
-    snprintf(buf, sz,
+    int pos = snprintf(buf, sz,
         "{\"connected\":%s,\"version_ok\":%s,\"pid\":%d,\"titleid\":\"PPSA38500\",\"app_ver\":\"01.002.001\","
         "\"fw\":\"PS5\",\"kstuff\":true,\"etahen\":true,\"hook\":%s,\"in_vehicle\":%s,"
         "\"god_mode\":%s,\"never_wanted\":%s,\"freeze_time\":%s,\"ps5_notify\":%s,"
         "\"frozen_time\":\"%02d:%02d\",\"hour\":%d,\"minute\":%d,\"wanted\":%d,"
-        "\"money\":-1,\"money_mode\":\"idle\",\"lektor_enabled\":false,\"lektor_mac_say\":false,"
-        "\"lektor_read_speaker\":false,\"lektor_rate\":195,\"subtitle_seq\":0}",
+        "\"money\":-1,\"money_mode\":\"idle\",\"lektor_enabled\":%s,\"lektor_mac_say\":false,"
+        "\"lektor_read_speaker\":%s,\"lektor_rate\":%d,\"subtitle_seq\":%d",
         G.connected ? "true" : "false",
         G.connected ? "true" : "false",
         G.pid,
@@ -451,8 +623,23 @@ static void build_status_json(char *buf, size_t sz) {
         G.never_wanted ? "true" : "false",
         G.freeze_time ? "true" : "false",
         G.ps5_notify ? "true" : "false",
-        G.frozen_h, G.frozen_m, h, m, wanted
+        G.frozen_h, G.frozen_m, h, m, wanted,
+        G.lektor_enabled ? "true" : "false",
+        G.lektor_read_speaker ? "true" : "false",
+        G.lektor_rate,
+        G.subtitle_seq
     );
+    if (G.sub_hist_cnt > 0 && pos > 0 && (size_t)pos + 512 < sz) {
+        pos += snprintf(buf + pos, sz - (size_t)pos,
+            ",\"subtitle_current\":{\"seq\":%d,\"time\":\"live\",\"speaker\":\"%s\",\"text\":\"%s\"},\"subtitle_history\":[",
+            G.sub_hist[0].seq, G.sub_hist[0].speaker, G.sub_hist[0].text);
+        for (int i = 0; i < G.sub_hist_cnt && (size_t)pos + 320 < sz; i++) {
+            pos += snprintf(buf + pos, sz - (size_t)pos, "%s{\"seq\":%d,\"time\":\"live\",\"speaker\":\"%s\",\"text\":\"%s\"}",
+                i ? "," : "", G.sub_hist[i].seq, G.sub_hist[i].speaker, G.sub_hist[i].text);
+        }
+        pos += snprintf(buf + pos, sz - (size_t)pos, "]");
+    }
+    snprintf(buf + pos, sz - (size_t)pos, "}");
 }
 
 /* ---------- HTTP Server ---------- */
@@ -491,7 +678,7 @@ static void handle_client(int cfd) {
         } else if (strcmp(path, "/api/vehicles") == 0) {
             http_send(cfd, 200, "application/json; charset=utf-8", ASSET_VEHICLES_JSON, ASSET_VEHICLES_JSON_len);
         } else if (strcmp(path, "/api/status") == 0) {
-            char st[1024];
+            char st[6144];
             pthread_mutex_lock(&G.lock);
             build_status_json(st, sizeof(st));
             pthread_mutex_unlock(&G.lock);
@@ -606,14 +793,21 @@ static void handle_client(int cfd) {
         else if (strcmp(name, "never_wanted") == 0) G.never_wanted = (en != 0);
         else if (strcmp(name, "freeze_time") == 0) G.freeze_time = (en != 0);
         else if (strcmp(name, "ps5_notify") == 0) G.ps5_notify = (en != 0);
+        else if (strcmp(name, "lektor_enabled") == 0) G.lektor_enabled = (en != 0);
+        else if (strcmp(name, "lektor_read_speaker") == 0) G.lektor_read_speaker = (en != 0);
         snprintf(msg, sizeof(msg), "%s: %s", name, en ? "ON" : "OFF");
         dbg_notify(msg);
+    } else if (strcmp(path, "/api/lektor/rate") == 0) {
+        int r = 195;
+        json_get_int(body, "rate", &r);
+        G.lektor_rate = r;
+        snprintf(msg, sizeof(msg), "Voiceover rate: %d", r);
     } else {
         ok = false;
-        snprintf(msg, sizeof(msg), "Not available in standalone ELF v1 yet");
+        snprintf(msg, sizeof(msg), "Not available in standalone ELF yet");
     }
 
-    char st[1024], resp[1600];
+    char st[6144], resp[6600];
     build_status_json(st, sizeof(st));
     pthread_mutex_unlock(&G.lock);
 
@@ -623,9 +817,11 @@ static void handle_client(int cfd) {
 }
 
 int main(void) {
-    pthread_t bg;
+    pthread_t bg, sub;
     pthread_create(&bg, NULL, bg_thread_fn, NULL);
     pthread_detach(bg);
+    pthread_create(&sub, NULL, subtitle_thread_fn, NULL);
+    pthread_detach(sub);
 
     int sfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sfd < 0) return 1;
