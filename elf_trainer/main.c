@@ -1218,7 +1218,7 @@ static void build_status_json(char *buf, size_t sz) {
         "\"fw\":\"PS5\",\"kstuff\":true,\"etahen\":true,\"hook\":%s,\"in_vehicle\":%s,"
         "\"god_mode\":%s,\"never_wanted\":%s,\"freeze_time\":%s,\"ps5_notify\":%s,"
         "\"unlimited_health\":%s,\"unlimited_stamina\":%s,\"infinite_ammo\":%s,"
-        "\"max_relationship\":%s,\"max_criminal_profile\":%s,\"no_money_decrease\":%s,"
+        "\"max_relationship\":%s,\"max_criminal_profile\":%s,\"no_money_decrease\":%s,\"no_money_confiscation\":%s,"
         "\"frozen_time\":\"%02d:%02d\",\"hour\":%d,\"minute\":%d,\"wanted\":%d,"
         "\"money\":%d,\"money_mode\":\"%s\",\"money_watch_note\":\"%s\",\"lektor_enabled\":%s,\"lektor_mac_say\":false,"
         "\"lektor_read_speaker\":%s,\"lektor_rate\":%d,\"subtitle_seq\":%d",
@@ -1238,6 +1238,7 @@ static void build_status_json(char *buf, size_t sz) {
         G.native_patch_on[3] ? "true" : "false",
         G.native_patch_on[4] ? "true" : "false",
         G.native_patch_on[5] ? "true" : "false",
+        G.native_patch_on[6] ? "true" : "false",
         G.frozen_h, G.frozen_m, h, m, wanted,
         money_val, G.money_mode, G.money_note,
         G.lektor_enabled ? "true" : "false",

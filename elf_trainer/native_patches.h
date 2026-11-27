@@ -86,6 +86,16 @@ static const NativePatchEntry NP_no_money_decrease_ENTRIES[] = {
     { 0x26A2317ULL, NP_no_money_decrease_3_ON, NP_no_money_decrease_3_OFF, 7 },
 };
 
+static const uint8_t NP_no_money_confiscation_0_ON[34] = { 0x9c, 0x41, 0x81, 0xf8, 0x76, 0x8b, 0x98, 0x73, 0x75, 0x12, 0x50, 0x48, 0x8b, 0x45, 0x00, 0x48, 0x81, 0x78, 0x08, 0x90, 0xa0, 0x2d, 0x02, 0x58, 0x75, 0x02, 0x9d, 0xc3, 0x9d, 0xe9, 0x1e, 0x59, 0x73, 0xf9 };
+static const uint8_t NP_no_money_confiscation_0_OFF[34] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+static const uint8_t NP_no_money_confiscation_1_ON[5] = { 0xe8, 0x5d, 0x9b, 0x8c, 0x06 };
+static const uint8_t NP_no_money_confiscation_1_OFF[5] = { 0xe8, 0x9d, 0xf4, 0xff, 0xff };
+
+static const NativePatchEntry NP_no_money_confiscation_ENTRIES[] = {
+    { 0x8F6BE80ULL, NP_no_money_confiscation_0_ON, NP_no_money_confiscation_0_OFF, 34 },
+    { 0x26A231EULL, NP_no_money_confiscation_1_ON, NP_no_money_confiscation_1_OFF, 5 },
+};
+
 static const NativePatchDef NATIVE_PATCHES[] = {
     { "unlimited_health", "Unlimited Health (Native)", NP_unlimited_health_ENTRIES, 5 },
     { "unlimited_stamina", "Unlimited Stamina", NP_unlimited_stamina_ENTRIES, 2 },
@@ -93,5 +103,6 @@ static const NativePatchDef NATIVE_PATCHES[] = {
     { "max_relationship", "Max Relationship", NP_max_relationship_ENTRIES, 2 },
     { "max_criminal_profile", "Max Criminal Profile", NP_max_criminal_profile_ENTRIES, 2 },
     { "no_money_decrease", "No Money Decrease", NP_no_money_decrease_ENTRIES, 4 },
+    { "no_money_confiscation", "No Money Confiscation", NP_no_money_confiscation_ENTRIES, 2 },
 };
-#define NATIVE_PATCHES_COUNT 6
+#define NATIVE_PATCHES_COUNT 7
