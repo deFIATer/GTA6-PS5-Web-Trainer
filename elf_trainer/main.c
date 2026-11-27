@@ -16,8 +16,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <dlfcn.h>
 #include <unistd.h>
 
+#include "tile_assets.h"
 #include "vehicles_data.h"
 #include "web_assets.h"
 
@@ -816,7 +819,37 @@ static void handle_client(int cfd) {
     close(cfd);
 }
 
+/* ---------- Automatic PS5 Home-Screen Media Tile Registration (PPSA38599) ---------- */
+
+extern int sceAppInstUtilInitialize(void);
+extern int sceAppInstUtilTerminate(void);
+extern int sceAppInstUtilAppInstallAll(void *);
+
+static void write_file_bytes(const char *path, const unsigned char *data, size_t len) {
+    FILE *f = fopen(path, "wb");
+    if (!f) return;
+    fwrite(data, 1, len, f);
+    fclose(f);
+    chmod(path, 0644);
+}
+
+static void register_home_tile(void) {
+    mkdir("/user/app/PPSA38599", 0755);
+    mkdir("/user/app/PPSA38599/sce_sys", 0755);
+    write_file_bytes("/user/app/PPSA38599/sce_sys/param.json", ASSET_PARAM_JSON, ASSET_PARAM_JSON_len);
+    write_file_bytes("/user/app/PPSA38599/sce_sys/icon0.png", ASSET_ICON0_PNG, ASSET_ICON0_PNG_len);
+
+    if (sceAppInstUtilInitialize() == 0) {
+        typedef int (*install_dir_fn)(const char *, const char *, void *);
+        install_dir_fn fn = (install_dir_fn)dlsym(RTLD_DEFAULT, "Wudg3Xe3heE");
+        if (fn) fn("PPSA38599", "/user/app/", NULL);
+        else sceAppInstUtilAppInstallAll(NULL);
+        sceAppInstUtilTerminate();
+    }
+}
+
 int main(void) {
+    register_home_tile();
     pthread_t bg, sub;
     pthread_create(&bg, NULL, bg_thread_fn, NULL);
     pthread_detach(bg);
