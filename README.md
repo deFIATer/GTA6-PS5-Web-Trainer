@@ -18,13 +18,12 @@ Works on **PC, Mac, Linux, Tablet, and Phone** over Wi-Fi — **English (default
 
 ## Quick Start
 
-### Option A · Standalone PS5 Payload (`.elf`) + ShadowMount Tile (`PPSA38599`) — **NO PC NEEDED!**
-You can run the entire Web Trainer **directly inside your PS5** (with full DualSense gamepad navigation):
+### Option A · Standalone PS5 Payload (`.elf`) — **NO PC NEEDED!**
+You can run the entire Web Trainer **directly inside your PS5** (with full DualSense gamepad navigation — no folder copying or ShadowMount required!):
 1. Make sure **ps5debug-NG** (port `744`) is running on your PS5.
-2. Copy the **`PPSA38599`** folder to **`/data/homebrew/PPSA38599`** on your PS5 (to mount it as a Home Screen tile with **ShadowMount**), and send [`elf_trainer/GTA6WebTrainer.elf`](elf_trainer/GTA6WebTrainer.elf) to port `9021` or `/data/etaHEN/payloads/`.
-   - *One-click FTP installer:* `python3 install_to_ps5.py --ip <PS5_IP>`
-3. Launch **`GTA6WebTrainer.elf`** (it auto-connects to GTA VI in the background every 3s).
-4. Open the **GTA VI Web Trainer** tile (`PPSA38599`) on your PS5 — or open **`http://127.0.0.1:8080`** in the PS5 browser / **`http://<PS5_IP>:8080`** on your phone!
+2. Send [`elf_trainer/GTA6WebTrainer.elf`](elf_trainer/GTA6WebTrainer.elf) to your PS5 ELF loader (port `9021`) or place it in `/data/etaHEN/payloads/`.
+3. On startup, **`GTA6WebTrainer.elf` automatically installs the `GTA VI Web Trainer` (`PPSA38599`) tile in the PS5 Media tab** and auto-connects to GTA VI in the background every 3s.
+4. Click the **GTA VI Web Trainer** tile in **Media** on your PS5 (navigate with `L1/R1`, `D-Pad`, right-stick scroll, `X`), or open **`http://<PS5_IP>:8080`** on your phone!
 
 ### Option B · Run on PC / Mac / Linux (Full version + Local Voiceover)
 ### Requirements
@@ -44,10 +43,10 @@ Then open **`http://localhost:8080`** on your computer (or **`http://<YOUR_PC_IP
 Web Trainer (PWA) do **GTA VI (`PPSA38500 01.002.001`)** na przerobione **PS5** (przetestowane na **FW 13.60** z `ps5debug-NG` na porcie `744`).  
 Język przełączysz w prawym górnym rogu przyciskiem **`🌐 EN / PL`**.
 
-- **NOWOŚĆ · Bezpośrednio na PS5 (bez komputera!)**:
-  1. Wrzuć folder **`PPSA38599`** na PS5 do **`/data/homebrew/PPSA38599`** (do zamontowania jako kafelek przez **ShadowMount**).
-  2. Załaduj [`elf_trainer/GTA6WebTrainer.elf`](elf_trainer/GTA6WebTrainer.elf) przez port `9021` lub `/data/etaHEN/payloads/` *(lub użyj automatycznego instalatora: `python3 install_to_ps5.py --ip <IP_PS5>`)*.
-  3. Kliknij kafelek **GTA VI Web Trainer** na PS5 (obsługa padem DualSense!) albo otwórz `http://<IP_PS5>:8080` na telefonie.
+- **NOWOŚĆ · Bezpośrednio na PS5 (bez komputera i bez kopiowania folderów!)**:
+  1. Włącz `ps5debug-NG` (port `744`) na PS5 i załaduj [`elf_trainer/GTA6WebTrainer.elf`](elf_trainer/GTA6WebTrainer.elf) przez port `9021` lub `/data/etaHEN/payloads/`.
+  2. **`GTA6WebTrainer.elf` sam automatycznie zainstaluje kafelek `GTA VI Web Trainer` (`PPSA38599`) w zakładce Multimedia** i co 3s będzie automatycznie łączył się z GTA VI.
+  3. Kliknij kafelek **GTA VI Web Trainer** w **Multimedia** na PS5 (pełna obsługa DualSense: `L1/R1`, krzyżak, scroll prawą gałką, `X`) albo otwórz `http://<IP_PS5>:8080` na telefonie.
 - **macOS / Linux**: uruchom `./start_mac_linux.sh`
 - **Windows**: kliknij dwukrotnie `start_windows.bat`
 - Otwórz `http://localhost:8080`, wpisz IP swojej PS5 i kliknij **Połącz z PS5**.
