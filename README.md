@@ -18,6 +18,13 @@ Works on **PC, Mac, Linux, Tablet, and Phone** over Wi-Fi — **English (default
 
 ## Quick Start
 
+### Option A · Standalone PS5 Payload (`.elf`) — **NO PC NEEDED!**
+You can now run the entire Web Trainer **directly inside your PS5**:
+1. Make sure **ps5debug-NG** (port `744`) is running on your PS5.
+2. Send [`elf_trainer/GTA6WebTrainer.elf`](elf_trainer/GTA6WebTrainer.elf) to your PS5 ELF loader (port `9021`) or place it in `/data/etaHEN/payloads/`.
+3. Open **`http://127.0.0.1:8080`** in the PS5 web browser, or **`http://<PS5_IP>:8080`** on your phone (add to Home Screen as a PWA!), and click **Connect PS5** (`127.0.0.1:744`).
+
+### Option B · Run on PC / Mac / Linux (Full version + Local Voiceover)
 ### Requirements
 - Jailbroken PS5 with **ps5debug-NG** running (port `744`) and **GTA VI (`PPSA38500 01.002.001`)** in Story Mode.
 - **Python 3.10+** on Windows, macOS, or Linux.
@@ -35,6 +42,7 @@ Then open **`http://localhost:8080`** on your computer (or **`http://<YOUR_PC_IP
 Web Trainer (PWA) do **GTA VI (`PPSA38500 01.002.001`)** na przerobione **PS5** (przetestowane na **FW 13.60** z `ps5debug-NG` na porcie `744`).  
 Język przełączysz w prawym górnym rogu przyciskiem **`🌐 EN / PL`**.
 
+- **NOWOŚĆ · Bezpośrednio na PS5 (bez komputera!)**: wyślij [`elf_trainer/GTA6WebTrainer.elf`](elf_trainer/GTA6WebTrainer.elf) na port `9021` (lub wrzuć do `/data/etaHEN/payloads/`) i otwórz `http://127.0.0.1:8080` w przeglądarce PS5 albo `http://<IP_PS5>:8080` na telefonie!
 - **macOS / Linux**: uruchom `./start_mac_linux.sh`
 - **Windows**: kliknij dwukrotnie `start_windows.bat`
 - Otwórz `http://localhost:8080`, wpisz IP swojej PS5 i kliknij **Połącz z PS5**.
