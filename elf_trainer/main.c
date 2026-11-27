@@ -26,7 +26,7 @@
 #include "web_assets.h"
 
 #define HTTP_PORT 8080
-#define TRAINER_VERSION "ELF v1.1.1"
+#define TRAINER_VERSION "ELF v1.1.2"
 #define PS5DBG_MAGIC 0xFFAABBCCu
 #define CMD_SUCCESS  0x80000000u
 
@@ -208,11 +208,11 @@ static int dbg_auth(int fd) {
     return dbg_expect_ok(fd);
 }
 
-static int dbg_scan_u32(int fd, int pid, uint64_t addr, uint32_t length, uint32_t val, uint32_t *out_offs, int max_out) {
+static int dbg_scan_u32_align(int fd, int pid, uint64_t addr, uint32_t length, uint8_t align, uint32_t val, uint32_t *out_offs, int max_out) {
     struct __attribute__((packed)) {
         uint32_t pid; uint64_t addr; uint32_t length;
         uint8_t vtype; uint8_t ctype; uint8_t align; uint32_t lenData;
-    } req = {(uint32_t)pid, addr, length, 4, 0, 1, 4};
+    } req = {(uint32_t)pid, addr, length, 4, 0, align, 4};
     if (dbg_send_cmd(fd, CMD_PROC_SCAN_START, &req, sizeof(req)) < 0) return -1;
     if (dbg_expect_ok(fd) < 0) return -1;
     if (send_all(fd, &val, 4) < 0) return -1;
@@ -236,6 +236,10 @@ static int dbg_scan_u32(int fd, int pid, uint64_t addr, uint32_t length, uint32_
     }
     if (dbg_expect_ok(fd) < 0) return -1;
     return cnt;
+}
+
+static int dbg_scan_u32(int fd, int pid, uint64_t addr, uint32_t length, uint32_t val, uint32_t *out_offs, int max_out) {
+    return dbg_scan_u32_align(fd, pid, addr, length, 1, val, out_offs, max_out);
 }
 
 static int dbg_scan_u64(int fd, int pid, uint64_t addr, uint32_t length, uint64_t val, uint32_t *out_offs, int max_out) {
@@ -794,26 +798,37 @@ static int money_scan_master_c(const char *host, int port, int pid, int32_t amou
         if (kind) { ranges[rcnt].s = m.s; ranges[rcnt].e = m.e; ranges[rcnt].kind = kind; rcnt++; }
     }
     int found = 0;
+    uint32_t *offs = (uint32_t *)malloc(4096 * sizeof(uint32_t));
+    if (!offs) { close(fd); return -1; }
     for (int r = 0; r < rcnt && !G.money_cancel; r++) {
         uint64_t addr = ranges[r].s;
         while (addr < ranges[r].e && !G.money_cancel) {
             uint32_t len = (uint32_t)((ranges[r].e - addr > 0x10000000ULL) ? 0x10000000ULL : (ranges[r].e - addr));
-            uint32_t offs[1024];
-            if (ranges[r].kind == 1 || ranges[r].kind == 2) {
-                int n = dbg_scan_u32(fd, pid, addr, len, (uint32_t)amount, offs, 1024);
+            if (ranges[r].kind == 1) {
+                /* 0xf0.. RAGEVM: scan rare 0x00000804 (align 4) instead of small cash amount! */
+                int n = dbg_scan_u32_align(fd, pid, addr, len, 4, 0x00000804u, offs, 4096);
                 for (int i = 0; i < n && found < max_out && !G.money_cancel; i++) {
                     uint64_t a = addr + offs[i];
-                    uint32_t ctx[6];
-                    if (dbg_read(fd, pid, a - 16, ctx, sizeof(ctx)) == 0) {
-                        if (ranges[r].kind == 1 && (ctx[2] & 0x00FFFFFFu) == 0x00AF2E50u && ctx[3] == 0x00000804u) {
-                            out_addrs[found++] = a;
-                        } else if (ranges[r].kind == 2 && ctx[1] == 0x6F0A8D01u) {
-                            out_addrs[found++] = a;
+                    uint32_t ctx[4];
+                    if (dbg_read(fd, pid, a - 4, ctx, sizeof(ctx)) == 0) {
+                        if ((ctx[0] & 0x00FFFFFFu) == 0x00AF2E50u && ctx[1] == 0x00000804u && (int32_t)ctx[2] == amount) {
+                            out_addrs[found++] = a + 4;
                         }
                     }
                 }
+            } else if (ranges[r].kind == 2) {
+                /* 0xfa.. script wallet: scan rare tag 0x6F0A8D01 (align 4) */
+                int n = dbg_scan_u32_align(fd, pid, addr, len, 4, 0x6F0A8D01u, offs, 4096);
+                for (int i = 0; i < n && found < max_out && !G.money_cancel; i++) {
+                    uint64_t a = addr + offs[i] + 12;
+                    int32_t v = 0;
+                    if (dbg_read(fd, pid, a, &v, 4) == 0 && v == amount) {
+                        out_addrs[found++] = a;
+                    }
+                }
             } else {
-                int n = dbg_scan_u32(fd, pid, addr, len, 0x6F0A8D01u, offs, 1024);
+                /* 0x11.. master copy: scan rare tag 0x6F0A8D01 (align 4) */
+                int n = dbg_scan_u32_align(fd, pid, addr, len, 4, 0x6F0A8D01u, offs, 4096);
                 for (int i = 0; i < n && found < max_out && !G.money_cancel; i++) {
                     uint64_t a = addr + offs[i] - 20;
                     struct __attribute__((packed)) { int32_t v; uint32_t z; uint64_t flag; } c;
@@ -826,6 +841,7 @@ static int money_scan_master_c(const char *host, int port, int pid, int32_t amou
             addr += len;
         }
     }
+    free(offs);
     close(fd);
     return found;
 }
