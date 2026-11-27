@@ -771,6 +771,19 @@ init();
         if (j && (j.message || j.error)) console.log('[waypoint]', j.message || j.error);
       } catch (e) { console.log('waypoint tp error', e); }
     };
+    var sbtn = document.createElement('button');
+    sbtn.id = 'tp-summon-btn';
+    sbtn.className = 'btn';
+    sbtn.textContent = '\uD83D\uDE97 Summon Car';
+    sbtn.style.cssText = 'position:fixed;right:16px;bottom:152px;z-index:99999;padding:14px 18px;font-size:15px;font-weight:700;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.45)';
+    sbtn.onclick = async function () {
+      try {
+        var r = await fetch('/api/summon_vehicle', { method: 'POST' });
+        var j = await r.json().catch(function () { return {}; });
+        if (j && (j.message || j.error)) console.log('[summon]', j.message || j.error);
+      } catch (e) { console.log('summon error', e); }
+    };
+    document.body.appendChild(sbtn);
     document.body.appendChild(btn);
     var lbl = document.createElement('div');
     lbl.id = 'tp-waypoint-lbl';

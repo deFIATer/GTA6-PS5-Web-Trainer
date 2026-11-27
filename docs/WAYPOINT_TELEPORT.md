@@ -56,3 +56,17 @@ waypoint coordinates next to it. Regenerate `elf_trainer/web_assets.h` with
 - Landed on the waypoint X/Y with the intended height, position stayed after walking/driving.
 - Vehicle teleport verified (`in_vehicle:true` -> vehicle and player moved to the waypoint).
 - Multiple consecutive teleports and game relaunches (per-call buffer fix).
+
+
+## Summon Car (same commit)
+
+Adds POST /api/summon_vehicle: moves the **last vehicle the player drove** to ~4 m in front of the
+player (z + 1 m), using the same entity SetMatrix path on the vehicle entity.
+
+- the trainer tracks the last vehicle from LocalPlayerVeh while driving (status polling) and
+  re-tracks it whenever a vehicle is currently occupied
+- sanity checks: entity type byte eh+0x30 == 2, plausible world position; stale/dead vehicles
+  are cleared with a message asking to drive the car again
+- UI: floating **Summon Car** button next to Teleport to Waypoint
+- verified on hardware: drove a car, exited, pressed Summon Car -> the exact car was moved next to
+  the player

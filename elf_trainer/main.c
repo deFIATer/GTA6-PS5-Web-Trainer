@@ -1265,6 +1265,83 @@ static void http_send(int fd, int code, const char *ct, const void *body, size_t
     if (len > 0 && body) send_all(fd, body, len);
 }
 
+/* ---- summon personal car ------------------------------------------------ */
+static uint64_t g_last_veh = 0;   /* last vehicle the player was driving */
+
+static bool summon_last_vehicle(char *err, size_t errsz) {
+    if (!G.connected || G.pid <= 0) { snprintf(err, errsz, "Not connected"); return false; }
+    uint64_t ped = 0;
+    if (dbg_read(G.sock, G.pid, G.base + OFF_LOCAL_PLAYER_PED, &ped, 8) < 0 || !ped) {
+        snprintf(err, errsz, "Enter Story Mode first (no player ped)");
+        return false;
+    }
+    uint64_t cur = 0;
+    (void)dbg_read(G.sock, G.pid, G.base + OFF_LOCAL_PLAYER_VEH, &cur, 8);
+    if (cur) g_last_veh = cur;
+    if (!g_last_veh) {
+        snprintf(err, errsz, "no car tracked yet - drive your car once");
+        return false;
+    }
+    uint64_t veh = g_last_veh;
+    uint8_t vtype = 0;
+    if (dbg_read(G.sock, G.pid, veh + 0x30, &vtype, 1) < 0 || vtype != 2) {
+        g_last_veh = 0;
+        snprintf(err, errsz, "tracked car is gone - drive it again to re-track");
+        return false;
+    }
+    float vw[3] = {0, 0, 0};
+    if (dbg_read(G.sock, G.pid, veh + 0x90, vw, 12) < 0 ||
+        fabsf(vw[0]) > 30000.0f || fabsf(vw[1]) > 30000.0f) {
+        g_last_veh = 0;
+        snprintf(err, errsz, "tracked car invalid - drive it again");
+        return false;
+    }
+    /* player position from the ped placement matrix */
+    uint8_t pm[64];
+    if (dbg_read(G.sock, G.pid, ped + 0x40, pm, 64) < 0) { snprintf(err, errsz, "no player matrix"); return false; }
+    float pf[16];
+    memcpy(pf, pm, 64);
+    int16_t psec[2];
+    memcpy(psec, &pf[15], 4);
+    float px = pf[12] + 32.0f * (float)psec[0];
+    float py = pf[13] + 32.0f * (float)psec[1];
+    float pz = pf[14];
+    float fwd[3] = {0, 0, 0};
+    (void)dbg_read(G.sock, G.pid, ped + 0x50, fwd, 12);
+    float tx = px + fwd[0] * 4.0f;
+    float ty = py + fwd[1] * 4.0f;
+    float tz = pz + 1.0f;
+
+    uint8_t m[64];
+    if (dbg_read(G.sock, G.pid, veh + 0x40, m, 64) < 0) { snprintf(err, errsz, "cannot read vehicle matrix"); return false; }
+    int sx = (int)(tx / 32.0f), sy = (int)(ty / 32.0f);
+    float *mf = (float *)m;
+    mf[12] = tx - 32.0f * (float)sx;
+    mf[13] = ty - 32.0f * (float)sy;
+    mf[14] = tz;
+    int16_t sec[2] = {(int16_t)sx, (int16_t)sy};
+    memcpy(&mf[15], sec, 4);
+
+    uint64_t buf = dbg_alloc(G.sock, G.pid, 0x40);
+    if (!buf) { snprintf(err, errsz, "alloc failed"); return false; }
+    if (dbg_write(G.sock, G.pid, buf, m, 64) < 0) { snprintf(err, errsz, "write matrix failed"); return false; }
+    uint64_t vt = 0, fn = 0;
+    if (dbg_read(G.sock, G.pid, veh, &vt, 8) < 0 || !vt ||
+        dbg_read(G.sock, G.pid, vt + 0x178, &fn, 8) < 0 || !fn) {
+        snprintf(err, errsz, "SetMatrix vtable slot missing");
+        return false;
+    }
+    game_call8(fn, veh, buf, 1, 1, 0, 0, 0, 0);
+    (void)usleep(200000);
+    float nw[3] = {0, 0, 0};
+    if (dbg_read(G.sock, G.pid, veh + 0x90, nw, 12) >= 0 &&
+        fabsf(nw[0] - tx) < 25.0f && fabsf(nw[1] - ty) < 25.0f) {
+        return true;
+    }
+    snprintf(err, errsz, "car move not applied - try again in normal gameplay");
+    return false;
+}
+
 /* ---- waypoint (map marker) teleport ------------------------------------- */
 #define OFF_WAYPOINT 0xAF93FC0ULL   /* x, y, z, present flag (float each) */
 
@@ -1374,6 +1451,10 @@ static void handle_client(int cfd) {
         } else if (strcmp(path, "/api/status") == 0) {
             char st[6144];
             pthread_mutex_lock(&G.lock);
+            if (G.connected && G.pid > 0) {
+                uint64_t tv = 0;
+                if (dbg_read(G.sock, G.pid, G.base + OFF_LOCAL_PLAYER_VEH, &tv, 8) == 0 && tv) g_last_veh = tv;
+            }
             build_status_json(st, sizeof(st));
             pthread_mutex_unlock(&G.lock);
             http_send(cfd, 200, "application/json; charset=utf-8", st, strlen(st));
@@ -1476,6 +1557,15 @@ static void handle_client(int cfd) {
         G.frozen_h = h; G.frozen_m = m;
         snprintf(msg, sizeof(msg), "Time set to %02d:%02d", h, m);
         dbg_notify(msg);
+        } else if (strcmp(path, "/api/summon_vehicle") == 0) {
+            char terr[128] = {0};
+            if (summon_last_vehicle(terr, sizeof(terr))) {
+                snprintf(msg, sizeof(msg), "car summoned");
+                dbg_notify(msg);
+            } else {
+                ok = false;
+                snprintf(msg, sizeof(msg), "%s", terr);
+            }
     } else if (strcmp(path, "/api/teleport_waypoint") == 0) {
             char terr[128] = {0};
             if (teleport_to_waypoint(terr, sizeof(terr))) {
