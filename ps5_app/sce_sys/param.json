@@ -1,0 +1,18 @@
+{
+  "applicationCategoryType": 0,
+  "applicationDrmType": "standard",
+  "attribute": 0,
+  "contentId": "IV0000-GTAV00001_00-GTAVIWEBTRAINER0",
+  "contentVersion": "01.000.000",
+  "localizedParameters": {
+    "defaultLanguage": "en-US",
+    "en-US": {
+      "titleName": "GTA VI Web Trainer"
+    },
+    "pl-PL": {
+      "titleName": "GTA VI Web Trainer"
+    }
+  },
+  "titleId": "GTAV00001",
+  "versionFileUri": ""
+}

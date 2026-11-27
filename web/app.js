@@ -563,3 +563,87 @@ async function init() {
   setInterval(refreshStatus, 1500);
 }
 init();
+
+/* ---------- DualSense / Gamepad & D-Pad Navigation ---------- */
+(function initGamepadNav() {
+  const TAB_ORDER = ["self", "vehicles", "world", "lektor", "ps5"];
+  let focusIdx = -1;
+  let lastMove = 0;
+  let prevButtons = [];
+
+  function getFocusables() {
+    const root = document.getElementById("main-root");
+    if (!root) return [];
+    const selector = ".tab-panel.active button:not([style*='display: none']), .tab-panel.active .switch-row";
+    return Array.from(root.querySelectorAll(selector)).filter(el => el.offsetParent !== null);
+  }
+
+  function setFocus(idx) {
+    const items = getFocusables();
+    document.querySelectorAll(".gp-focus").forEach(el => el.classList.remove("gp-focus"));
+    if (!items.length) { focusIdx = -1; return; }
+    focusIdx = ((idx % items.length) + items.length) % items.length;
+    const el = items[focusIdx];
+    el.classList.add("gp-focus");
+    el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  function stepTab(dir) {
+    let cur = TAB_ORDER.indexOf(currentView);
+    if (cur < 0) cur = 0;
+    const next = TAB_ORDER[(cur + dir + TAB_ORDER.length) % TAB_ORDER.length];
+    switchTab(next);
+    setTimeout(() => setFocus(0), 30);
+  }
+
+  function pressSelected() {
+    const items = getFocusables();
+    if (focusIdx >= 0 && focusIdx < items.length) {
+      items[focusIdx].click();
+    } else if (items.length) {
+      setFocus(0);
+    }
+  }
+
+  /* Keyboard / PS5 browser D-pad fallback */
+  window.addEventListener("keydown", (e) => {
+    if (document.activeElement && document.activeElement.tagName === "INPUT") return;
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); setFocus(focusIdx + 1); }
+    else if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); setFocus(focusIdx - 1); }
+    else if (e.key === "Enter" || e.key === " ") {
+      if (focusIdx >= 0) { e.preventDefault(); pressSelected(); }
+    } else if (e.key === "PageUp") { e.preventDefault(); stepTab(-1); }
+    else if (e.key === "PageDown") { e.preventDefault(); stepTab(1); }
+  });
+
+  /* Standard Gamepad API polling (DualSense: 0=Cross, 1=Circle, 4=L1, 5=R1, 12..15=D-pad) */
+  function pollGamepad() {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const gp = pads && Array.from(pads).find(Boolean);
+    if (gp) {
+      const now = performance.now();
+      const pressed = (i) => gp.buttons[i] && gp.buttons[i].pressed;
+      const justPressed = (i) => pressed(i) && !prevButtons[i];
+
+      if (justPressed(4)) stepTab(-1);      // L1
+      else if (justPressed(5)) stepTab(1);  // R1
+      else if (justPressed(0)) pressSelected(); // Cross (X)
+      else if (justPressed(1)) {            // Circle (O)
+        document.querySelectorAll(".gp-focus").forEach(el => el.classList.remove("gp-focus"));
+        focusIdx = -1;
+      }
+
+      const axY = gp.axes && gp.axes.length > 1 ? gp.axes[1] : 0;
+      const axX = gp.axes && gp.axes.length > 0 ? gp.axes[0] : 0;
+      const down = pressed(13) || pressed(15) || axY > 0.6 || axX > 0.6;
+      const up = pressed(12) || pressed(14) || axY < -0.6 || axX < -0.6;
+      if ((down || up) && (now - lastMove) > 170) {
+        lastMove = now;
+        setFocus(focusIdx + (down ? 1 : -1));
+      }
+      prevButtons = gp.buttons.map(b => !!b.pressed);
+    }
+    requestAnimationFrame(pollGamepad);
+  }
+  requestAnimationFrame(pollGamepad);
+})();

@@ -400,3 +400,12 @@
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   #toast.ok { border-color: var(--ok); color: var(--ok); }
   #toast.err { border-color: var(--err); color: var(--err); }
+
+/* Gamepad / DualSense focus ring */
+.gp-focus {
+  outline: 2.5px solid var(--cyan) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.28), 0 0 18px rgba(255, 61, 139, 0.35) !important;
+  transform: scale(1.015);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
