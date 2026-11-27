@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1268,8 +1269,25 @@ static void http_send(int fd, int code, const char *ct, const void *body, size_t
 /* ---- summon personal car ------------------------------------------------ */
 static uint64_t g_last_veh = 0;   /* last vehicle the player was driving */
 
+static time_t g_last_summon_time = 0;
+static bool read_ent_matrix_pos(uint64_t ent, float *ox, float *oy, float *oz) {
+    uint8_t m[64];
+    if (dbg_read(G.sock, G.pid, ent + 0x40, m, 64) < 0) return false;
+    float f[16]; memcpy(f, m, 64);
+    int16_t sec[2]; memcpy(sec, &f[15], 4);
+    *ox = f[12] + 32.0f * (float)sec[0];
+    *oy = f[13] + 32.0f * (float)sec[1];
+    *oz = f[14];
+    return true;
+}
+
 static bool summon_last_vehicle(char *err, size_t errsz) {
     if (!G.connected || G.pid <= 0) { snprintf(err, errsz, "Not connected"); return false; }
+    time_t nowsm = time(NULL);
+    if (g_last_summon_time != 0 && nowsm - g_last_summon_time < 2) {
+        snprintf(err, errsz, "cooldown: wait a moment before summoning again");
+        return false;
+    }
     uint64_t ped = 0;
     if (dbg_read(G.sock, G.pid, G.base + OFF_LOCAL_PLAYER_PED, &ped, 8) < 0 || !ped) {
         snprintf(err, errsz, "Enter Story Mode first (no player ped)");
@@ -1290,7 +1308,7 @@ static bool summon_last_vehicle(char *err, size_t errsz) {
         return false;
     }
     float vw[3] = {0, 0, 0};
-    if (dbg_read(G.sock, G.pid, veh + 0x90, vw, 12) < 0 ||
+    if (!read_ent_matrix_pos(veh, &vw[0], &vw[1], &vw[2]) ||
         fabsf(vw[0]) > 30000.0f || fabsf(vw[1]) > 30000.0f) {
         g_last_veh = 0;
         snprintf(err, errsz, "tracked car invalid - drive it again");
@@ -1334,8 +1352,9 @@ static bool summon_last_vehicle(char *err, size_t errsz) {
     game_call8(fn, veh, buf, 1, 1, 0, 0, 0, 0);
     (void)usleep(200000);
     float nw[3] = {0, 0, 0};
-    if (dbg_read(G.sock, G.pid, veh + 0x90, nw, 12) >= 0 &&
+    if (read_ent_matrix_pos(veh, &nw[0], &nw[1], &nw[2]) &&
         fabsf(nw[0] - tx) < 25.0f && fabsf(nw[1] - ty) < 25.0f) {
+        g_last_summon_time = nowsm;
         return true;
     }
     snprintf(err, errsz, "car move not applied - try again in normal gameplay");
