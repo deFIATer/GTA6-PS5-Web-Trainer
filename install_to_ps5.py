@@ -42,9 +42,9 @@ def main() -> None:
     upload(ftp, root / "elf_trainer" / "GTA6WebTrainer.elf", "/data/etaHEN/payloads/GTA6WebTrainer.elf")
 
     ensure_dir(ftp, f"{args.app_root}/sce_sys")
-    upload(ftp, root / "ps5_app" / "eboot.bin", f"{args.app_root}/eboot.bin")
-    upload(ftp, root / "ps5_app" / "sce_sys" / "icon0.png", f"{args.app_root}/sce_sys/icon0.png")
-    upload(ftp, root / "ps5_app" / "sce_sys" / "param.json", f"{args.app_root}/sce_sys/param.json")
+    upload(ftp, root / "PPSA38599" / "eboot.bin", f"{args.app_root}/eboot.bin")
+    upload(ftp, root / "PPSA38599" / "sce_sys" / "icon0.png", f"{args.app_root}/sce_sys/icon0.png")
+    upload(ftp, root / "PPSA38599" / "sce_sys" / "param.json", f"{args.app_root}/sce_sys/param.json")
 
     ftp.quit()
     print("[+] Done! Enable GTA6WebTrainer.elf in etaHEN Payloads and mount PPSA38599 with ShadowMount.")
