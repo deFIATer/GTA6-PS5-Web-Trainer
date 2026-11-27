@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<script>
+try {
+  document.querySelector('meta[name="color-scheme"]').content = localStorage.getItem("color-scheme") ?? "light dark";
+} catch (e) {}
+</script>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GTA VI" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/icon.svg" />
+<title>GTA VI PS5 Trainer</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app-shell">
+  <!-- Desktop / Tablet Sidebar -->
+  <aside class="sidebar" aria-label="Main navigation">
+    <div>
+      <div class="side-brand">
+        <div class="brand-logo">VI</div>
+        <div>
+          <div class="brand-title" style="font-size:16px">GTA VI Trainer</div>
+          <div style="font-size:11px;color:var(--muted)">PS5Debug-NG · PPSA38500</div>
+        </div>
+      </div>
+      <nav class="side-nav">
+        <button class="side-btn active" data-side="all" onclick="switchTab('all')"><span aria-hidden="true">📊</span> <span data-i18n="nav_dashboard">Dashboard</span></button>
+        <button class="side-btn" data-side="self" onclick="switchTab('self')"><span aria-hidden="true">👤</span> <span data-i18n="nav_self">Player</span></button>
+        <button class="side-btn" data-side="vehicles" onclick="switchTab('vehicles')"><span aria-hidden="true">🚗</span> <span data-i18n="nav_vehicles_full">Vehicles (254)</span></button>
+        <button class="side-btn" data-side="world" onclick="switchTab('world')"><span aria-hidden="true">🌤️</span> <span data-i18n="nav_world_full">World &amp; Weather</span></button>
+        <button class="side-btn" data-side="lektor" onclick="switchTab('lektor')"><span aria-hidden="true">🎙️</span> <span data-i18n="nav_lektor_full">Voiceover</span></button>
+        <button class="side-btn" data-side="ps5" onclick="switchTab('ps5')"><span aria-hidden="true">💰</span> <span data-i18n="nav_ps5_full">Money &amp; PS5</span></button>
+      </nav>
+    </div>
+    <div class="side-footer">
+      <span data-i18n="credits_offsets">Game offsets:</span> <a href="https://github.com/OnlyMoisties/basic-menu-src" target="_blank" style="color:var(--cyan);text-decoration:none">basic-menu-src</a> (<b>XeMo</b>).<br/>
+      <span data-i18n="credits_cats">Categories:</span> GTA Fandom Wiki.
+    </div>
+  </aside>
+
+  <div class="main-column">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo">VI</div>
+        <div class="brand-title">GTA VI</div>
+        <span id="mini-clock" class="mini-stat" title="In-game clock">--:--</span>
+        <span id="mini-wanted" class="mini-stat" title="Wanted level">★ -</span>
+        <span id="mini-money" class="mini-stat" style="color:var(--ok)" title="Cash">$—</span>
+      </div>
+      <div class="topbar-right">
+        <button id="lang-btn" class="pill" onclick="toggleLang()" title="Switch language (EN / PL)">🌐 EN</button>
+        <button class="icon-btn" onclick="toggleTheme()" aria-label="Toggle light/dark theme" title="Toggle light / dark theme">
+          <span class="theme-icon-light" aria-hidden="true">☀️</span>
+          <span class="theme-icon-dark" aria-hidden="true">🌙</span>
+        </button>
+        <button id="badge" class="pill" onclick="doConnect()" data-i18n="connect_ps5">Connect PS5</button>
+      </div>
+    </header>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <main id="main-root" class="content-wrap">
+      <!-- TAB 1: SELF -->
+      <section id="tab-self" class="tab-panel active">
+        <div class="card">
+          <div class="card-title" data-i18n="quick_actions">Quick Actions</div>
+          <button class="btn primary" style="margin-bottom:8px" onclick="callApi('/api/heal')" data-i18n="btn_heal_all">⚡ All-in-One (Heal + Armor + Repair)</button>
+          <div class="grid-3">
+            <button class="btn" onclick="callApi('/api/heal_only')" data-i18n="btn_heal">❤️ Heal</button>
+            <button class="btn" onclick="callApi('/api/armor_only')" data-i18n="btn_armor">🛡️ Armor</button>
+            <button class="btn" onclick="callApi('/api/repair_car')" data-i18n="btn_repair">🔧 Repair</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" data-i18n="protection_bg">Protection (Background)</div>
+          <div class="switch-row" onclick="toggleOpt('god_mode')">
+            <div>
+              <div class="switch-label">God Mode</div>
+              <div class="switch-sub" data-i18n="god_mode_sub">Auto-Heal + Auto-Repair vehicle every 0.25s</div>
+            </div>
+            <div id="sw-gm" class="switch"></div>
+          </div>
+          <div class="switch-row" onclick="toggleOpt('never_wanted')">
+            <div>
+              <div class="switch-label">Never Wanted</div>
+              <div class="switch-sub" data-i18n="never_wanted_sub">Automatically clears police wanted stars</div>
+            </div>
+            <div id="sw-nw" class="switch"></div>
+          </div>
+          <div class="switch-row" onclick="toggleOpt('ps5_notify')">
+            <div>
+              <div class="switch-label" data-i18n="ps5_notify_lbl">🔔 PS5 Notifications</div>
+              <div class="switch-sub" data-i18n="ps5_notify_sub">Shows action toasts on your TV screen</div>
+            </div>
+            <div id="sw-ntf" class="switch on"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" data-i18n="wanted_title">Wanted Level</div>
+          <div class="grid-6" style="margin-bottom:8px">
+            <button class="btn" onclick="callApi('/api/wanted', {level:0})">0</button>
+            <button class="btn" onclick="callApi('/api/wanted', {level:1})">1</button>
+            <button class="btn" onclick="callApi('/api/wanted', {level:2})">2</button>
+            <button class="btn" onclick="callApi('/api/wanted', {level:3})">3</button>
+            <button class="btn" onclick="callApi('/api/wanted', {level:4})">4</button>
+            <button class="btn" onclick="callApi('/api/wanted', {level:5})">5</button>
+          </div>
+          <div class="grid-2">
+            <button class="btn" onclick="callApi('/api/wanted_delta', {up:false})">➖ Wanted -1</button>
+            <button class="btn" onclick="callApi('/api/wanted_delta', {up:true})">➕ Wanted +1</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: WORLD -->
+      <section id="tab-world" class="tab-panel">
+        <div class="card">
+          <div class="card-title" data-i18n="time_title">Time of Day</div>
+          <div class="grid-2" style="margin-bottom:10px">
+            <button class="btn" onclick="callApi('/api/time', {hour:8, minute:0})" data-i18n="time_morning">🌅 Morning (08:00)</button>
+            <button class="btn" onclick="callApi('/api/time', {hour:12, minute:0})" data-i18n="time_noon">☀️ Noon (12:00)</button>
+            <button class="btn" onclick="callApi('/api/time', {hour:19, minute:0})" data-i18n="time_sunset">🌇 Sunset (19:00)</button>
+            <button class="btn" onclick="callApi('/api/time', {hour:0, minute:0})" data-i18n="time_night">🌙 Midnight (00:00)</button>
+          </div>
+          <div class="row" style="margin-bottom:10px">
+            <input id="hour" type="number" min="0" max="23" value="12" placeholder="Hr" aria-label="Hour" />
+            <span style="font-weight:700">:</span>
+            <input id="minute" type="number" min="0" max="59" value="0" placeholder="Min" aria-label="Minute" />
+            <button class="btn sm primary" onclick="setTime()" data-i18n="btn_set">Set</button>
+          </div>
+          <div class="switch-row" onclick="toggleOpt('freeze_time')">
+            <div>
+              <div class="switch-label">Freeze Time</div>
+              <div class="switch-sub" id="ft-sub" data-i18n="freeze_sub">Locks the in-game clock at the current hour</div>
+            </div>
+            <div id="sw-ft" class="switch"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" data-i18n="weather_title">Weather</div>
+          <button class="btn primary" onclick="callApi('/api/weather')" data-i18n="btn_weather">🌦️ Next Weather</button>
+        </div>
+      </section>
+
+      <!-- TAB 4: MONEY & PS5 -->
+      <section id="tab-ps5" class="tab-panel">
+        <div class="card">
+          <div class="card-title">
+            <span data-i18n="money_title">Money</span>
+            <span id="money-mode-badge" class="pill" style="cursor:default" data-i18n="wallet_none">No Wallet</span>
+          </div>
+          <div id="money-live" style="font-size:30px;font-weight:800;color:var(--ok);margin-bottom:8px">$—</div>
+
+          <div id="money-banner" style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div id="money-info" style="font-size:12.5px;color:var(--text);line-height:1.4" data-i18n="money_intro">Choose a mode below: Manual (by exact cash) or Auto-Detect (works from $0).</div>
+            <button id="money-cancel-btn" class="btn sm" style="display:none;flex-shrink:0;border-color:var(--err);color:var(--err)" onclick="moneyReset()">✖ Cancel</button>
+          </div>
+
+          <div id="money-controls" style="margin-bottom:12px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px" data-i18n="money_m1">Mode 1 · Manual (when cash &gt; $0)</div>
+            <div class="row" style="margin-bottom:10px">
+              <input id="money-val" type="number" data-i18n-ph="money_val_ph" placeholder="Enter exact cash shown in game" />
+              <button class="btn sm primary" onclick="moneyFind()" style="white-space:nowrap" data-i18n="btn_search">🔍 Search</button>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px" data-i18n="money_m2">Mode 2 · Auto-Detect (works from $0 — then change cash in game)</div>
+            <div class="row">
+              <input id="money-auto-val" type="number" min="0" data-i18n-ph="money_auto_ph" placeholder="Current cash (e.g. 0 or 250 — optional)" />
+              <button class="btn sm" onclick="moneyWatch()" style="white-space:nowrap" data-i18n="btn_auto">🤖 Auto-Detect</button>
+            </div>
+          </div>
+
+          <div id="money-presets" style="opacity:0.45;transition:.2s">
+            <div class="grid-2" style="margin-bottom:8px">
+              <button class="btn ok" onclick="moneyAdd(1000)">➕ +$1,000</button>
+              <button class="btn ok" onclick="moneyAdd(5000)">➕ +$5,000</button>
+              <button class="btn ok" onclick="moneyAdd(100000)">💵 +$100k</button>
+              <button class="btn ok" onclick="moneyAdd(1000000)">💰 +$1M</button>
+            </div>
+            <div class="grid-2">
+              <button class="btn" onclick="moneySet(1000000)" data-i18n="btn_set_1m">Set $1,000,000</button>
+              <button class="btn" onclick="moneySet(99999999)" data-i18n="btn_set_99m">Set $99,999,999</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span data-i18n="ps5_conn_title">PS5 Connection (PS5Debug-NG)</span>
+            <span id="ps5-conn-badge" class="pill" style="cursor:default" data-i18n="disconnected">Disconnected</span>
+          </div>
+          <div id="ps5-conn-form" class="row" style="margin-bottom:8px">
+            <input id="ip" type="text" value="__DEFAULT_IP__" placeholder="PS5 IP" aria-label="PS5 IP address" />
+            <input id="port" type="number" value="__DEFAULT_PORT__" style="width:92px;flex:0 0 92px" aria-label="PS5Debug-NG port" />
+          </div>
+          <div id="ps5-conn-actions" class="grid-2">
+            <button id="btn-connect" class="btn primary" onclick="doConnect()" data-i18n="connect_ps5">Connect PS5</button>
+            <button class="btn" onclick="refreshStatus()" data-i18n="refresh_status">Refresh Status</button>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="k" data-i18n="stat_game">Game</div><div class="v" id="st-game">—</div></div>
+            <div class="stat"><div class="k">FW / PID</div><div class="v" id="st-pid">—</div></div>
+            <div class="stat"><div class="k">kstuff / etaHEN</div><div class="v" id="st-env">—</div></div>
+            <div class="stat"><div class="k" data-i18n="stat_hook">Hook / Vehicle</div><div class="v" id="st-veh">—</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" data-i18n="log_title">Event Log</div>
+          <div id="log" data-i18n="log_ready">Ready. Click "Connect PS5" in the top-right corner.</div>
+        </div>
+
+        <div style="text-align:center;font-size:11px;color:var(--muted);padding:4px 8px 10px">
+          <span data-i18n="credits_footer">Game offsets &amp; vehicle list based on</span> <a href="https://github.com/OnlyMoisties/basic-menu-src" target="_blank" style="color:var(--cyan);text-decoration:none">basic-menu-src</a> (<b>XeMo</b>).
+        </div>
+      </section>
+
+      <!-- TAB 5: LIVE VOICEOVER -->
+      <section id="tab-lektor" class="tab-panel">
+        <div class="card">
+          <div class="card-title">
+            <span data-i18n="lek_title">Live Subtitle Voiceover (100% Local, No API)</span>
+            <span id="lektor-badge" class="pill" style="cursor:default" data-i18n="lek_off">Disabled</span>
+          </div>
+          <div class="switch-row" onclick="toggleOpt('lektor_enabled')">
+            <div>
+              <div class="switch-label" data-i18n="lek_listen">🎙️ Listen to PS5 Subtitles</div>
+              <div class="switch-sub" data-i18n="lek_listen_sub">Reads live in-game dialogue from RAM on a dedicated channel (~1.5s)</div>
+            </div>
+            <div id="sw-lek" class="switch"></div>
+          </div>
+          <div class="switch-row" onclick="toggleOpt('lektor_mac_say')">
+            <div>
+              <div class="switch-label" data-i18n="lek_mac">💻 Read on Mac (macOS say)</div>
+              <div class="switch-sub" data-i18n="lek_mac_sub">Local macOS voice synthesizer — FIFO queue, zero latency</div>
+            </div>
+            <div id="sw-macsay" class="switch on"></div>
+          </div>
+          <div class="switch-row" onclick="toggleBrowserSpeech()">
+            <div>
+              <div class="switch-label" data-i18n="lek_web">📱 Read in Browser / Phone</div>
+              <div class="switch-sub" data-i18n="lek_web_sub">Local Web Speech API (matches selected language)</div>
+            </div>
+            <div id="sw-webtts" class="switch"></div>
+          </div>
+          <div class="switch-row" onclick="toggleOpt('lektor_read_speaker')">
+            <div>
+              <div class="switch-label" data-i18n="lek_spk">Read Speaker Name</div>
+              <div class="switch-sub" data-i18n="lek_spk_sub">e.g. "Jason: Got your sunscreen on?"</div>
+            </div>
+            <div id="sw-spk" class="switch"></div>
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <label for="lek-rate" style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap"><span data-i18n="lek_speed">Speed</span> (<span id="lek-rate-val">195</span>):</label>
+            <input id="lek-rate" type="range" min="130" max="270" step="5" value="195" style="flex:1" onchange="setLektorRate(this.value)" oninput="document.getElementById('lek-rate-val').textContent=this.value" />
+            <button class="btn sm" onclick="testLektor()">🔊 Test</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" data-i18n="lek_cur_title">Current In-Game Subtitle</div>
+          <div id="sub-current" style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;min-block-size:68px">
+            <div id="sub-cur-spk" style="font-size:12px;font-weight:800;color:var(--pink);margin-bottom:4px">—</div>
+            <div id="sub-cur-txt" style="font-size:16px;font-weight:600;line-height:1.45" data-i18n="lek_waiting">Enable listening above and trigger a dialogue in GTA VI...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" data-i18n="lek_hist_title">Dialogue History (Click to Replay)</div>
+          <div id="sub-history" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto">
+            <div style="font-size:12px;color:var(--muted)" data-i18n="lek_hist_empty">No subtitles captured yet.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: VEHICLES -->
+      <section id="tab-vehicles" class="tab-panel veh-panel">
+        <div class="card">
+          <div class="card-title">
+            <span><span data-i18n="nav_vehicles">Vehicles</span> (<span id="veh-count">0</span>)</span>
+            <button class="btn sm ok" onclick="filterAvailableVehicles()" data-i18n="btn_filter_veh">🔍 Available in Game Only</button>
+          </div>
+          <div class="row" style="margin-bottom:10px">
+            <input id="veh-search" type="text" data-i18n-ph="veh_search_ph" placeholder="Search vehicle (e.g. banshee, apc, pmp 700)..." oninput="renderVehicles()" />
+          </div>
+          <div class="chips" id="veh-cats"></div>
+          <div class="card-title" style="margin-top:4px" data-i18n="quick_spawn">Quick Spawn</div>
+          <div class="chips" id="quick-veh"></div>
+          <div id="veh-grid" class="veh-grid"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="bottom-nav" aria-label="Mobile navigation">
+    <button class="nav-btn active" data-tab="self" onclick="switchTab('self')"><span class="ico" aria-hidden="true">👤</span><span data-i18n="nav_self">Player</span></button>
+    <button class="nav-btn" data-tab="vehicles" onclick="switchTab('vehicles')"><span class="ico" aria-hidden="true">🚗</span><span data-i18n="nav_vehicles">Vehicles</span></button>
+    <button class="nav-btn" data-tab="world" onclick="switchTab('world')"><span class="ico" aria-hidden="true">🌤️</span><span data-i18n="nav_world">World</span></button>
+    <button class="nav-btn" data-tab="lektor" onclick="switchTab('lektor')"><span class="ico" aria-hidden="true">🎙️</span><span data-i18n="nav_lektor">Voice</span></button>
+    <button class="nav-btn" data-tab="ps5" onclick="switchTab('ps5')"><span class="ico" aria-hidden="true">💰</span><span data-i18n="nav_money">Money</span></button>
+  </nav>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

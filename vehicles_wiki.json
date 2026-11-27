@@ -1,0 +1,498 @@
+{
+  "akane": {
+    "display": "Akane",
+    "category": "Kompakty"
+  },
+  "aleutian": {
+    "display": "Aleutian",
+    "category": "SUV i Kombi"
+  },
+  "allander": {
+    "display": "Allander",
+    "category": "SUV i Kombi"
+  },
+  "alvinov1": {
+    "display": "Alvino V1",
+    "category": "Motocykle"
+  },
+  "animus": {
+    "display": "Animus",
+    "category": "Sedany i Coupe"
+  },
+  "arcturus": {
+    "display": "Arcturus",
+    "category": null
+  },
+  "astron": {
+    "display": "Astron",
+    "category": "SUV i Kombi"
+  },
+  "avarus": {
+    "display": "Avarus",
+    "category": "Motocykle"
+  },
+  "baller2": {
+    "display": "baller2",
+    "category": "SUV i Kombi"
+  },
+  "baller8": {
+    "display": "baller8",
+    "category": "SUV i Kombi"
+  },
+  "banshee": {
+    "display": "Banshee",
+    "category": "Sportowe"
+  },
+  "benson": {
+    "display": "Benson",
+    "category": "Vany i Ciężarówki"
+  },
+  "biff": {
+    "display": "Biff",
+    "category": "Vany i Ciężarówki"
+  },
+  "bison": {
+    "display": "Bison",
+    "category": "Vany i Ciężarówki"
+  },
+  "bison1800": {
+    "display": "Bison 1800",
+    "category": "Terenowe i Pickupy"
+  },
+  "bison3800": {
+    "display": "Bison 3800",
+    "category": "Terenowe i Pickupy"
+  },
+  "bison4": {
+    "display": "bison4",
+    "category": "Vany i Ciężarówki"
+  },
+  "bison900": {
+    "display": "bison900",
+    "category": "Vany i Ciężarówki"
+  },
+  "blazer4": {
+    "display": "blazer4",
+    "category": "Terenowe i Pickupy"
+  },
+  "bmx": {
+    "display": "BMX",
+    "category": "Rowery"
+  },
+  "bobcatxl": {
+    "display": "Bobcat XL",
+    "category": "Vany i Ciężarówki"
+  },
+  "bogan": {
+    "display": "Bogan",
+    "category": "Sedany i Coupe"
+  },
+  "boxville": {
+    "display": "Boxville",
+    "category": "Vany i Ciężarówki"
+  },
+  "buccaneer": {
+    "display": "Buccaneer",
+    "category": "Muscle"
+  },
+  "buffalo": {
+    "display": "Buffalo",
+    "category": "Sportowe"
+  },
+  "buffalo6": {
+    "display": "Buffalo6",
+    "category": "Sportowe"
+  },
+  "burrito": {
+    "display": "Burrito",
+    "category": "Vany i Ciężarówki"
+  },
+  "bus2": {
+    "display": "bus2",
+    "category": "Vany i Ciężarówki"
+  },
+  "caracara4x4": {
+    "display": "Caracara 4x4",
+    "category": "Terenowe i Pickupy"
+  },
+  "carbonizzare": {
+    "display": "Carbonizzare",
+    "category": "Sportowe"
+  },
+  "carbonrs": {
+    "display": "Carbon RS",
+    "category": "Motocykle"
+  },
+  "chavosxs": {
+    "display": "Chavos XS",
+    "category": "Sedany i Coupe"
+  },
+  "chino": {
+    "display": "Chino",
+    "category": "Muscle"
+  },
+  "contender": {
+    "display": "Contender",
+    "category": "SUV i Kombi"
+  },
+  "coquette": {
+    "display": "Coquette",
+    "category": "Sportowe"
+  },
+  "coquette2": {
+    "display": "Coquette2",
+    "category": "Sportowe"
+  },
+  "coquette4": {
+    "display": "Coquette4",
+    "category": "Sportowe"
+  },
+  "cruiser": {
+    "display": "Cruiser",
+    "category": "Rowery"
+  },
+  "cypher": {
+    "display": "Cypher",
+    "category": "Sportowe"
+  },
+  "dominator": {
+    "display": "Dominator",
+    "category": "Muscle"
+  },
+  "dominator7": {
+    "display": "dominator7",
+    "category": "Muscle"
+  },
+  "dominator9": {
+    "display": "Dominator9",
+    "category": "Muscle"
+  },
+  "dorado": {
+    "display": "Dorado",
+    "category": "SUV i Kombi"
+  },
+  "dubsta": {
+    "display": "Dubsta",
+    "category": "SUV i Kombi"
+  },
+  "duster": {
+    "display": "Duster",
+    "category": "Samoloty"
+  },
+  "duster2": {
+    "display": "duster2",
+    "category": "Samoloty"
+  },
+  "emperor": {
+    "display": "Emperor",
+    "category": "Sedany i Coupe"
+  },
+  "feroci": {
+    "display": "Feroci",
+    "category": null
+  },
+  "furia": {
+    "display": "Furia",
+    "category": "Supersamochody"
+  },
+  "futo": {
+    "display": "Futo",
+    "category": "Sportowe"
+  },
+  "ganado": {
+    "display": "Ganado",
+    "category": "Terenowe i Pickupy"
+  },
+  "granger": {
+    "display": "Granger",
+    "category": "SUV i Kombi"
+  },
+  "granger3600lx": {
+    "display": "Granger 3600LX",
+    "category": "SUV i Kombi"
+  },
+  "gresleyxt": {
+    "display": "Gresley XT",
+    "category": "SUV i Kombi"
+  },
+  "grouse": {
+    "display": "Grouse",
+    "category": "Sedany i Coupe"
+  },
+  "growler": {
+    "display": "Growler",
+    "category": "Sportowe"
+  },
+  "hauler": {
+    "display": "Hauler",
+    "category": "Vany i Ciężarówki"
+  },
+  "hellion": {
+    "display": "Hellion",
+    "category": "Terenowe i Pickupy"
+  },
+  "impaler5": {
+    "display": "Impaler5",
+    "category": "Sedany i Coupe"
+  },
+  "impaler6": {
+    "display": "Impaler6",
+    "category": "Sedany i Coupe"
+  },
+  "intruder": {
+    "display": "Intruder",
+    "category": "Sedany i Coupe"
+  },
+  "jet": {
+    "display": "Jet",
+    "category": "Samoloty"
+  },
+  "jet2": {
+    "display": "jet2",
+    "category": "Samoloty"
+  },
+  "jubilee": {
+    "display": "Jubilee",
+    "category": "SUV i Kombi"
+  },
+  "jugular": {
+    "display": "Jugular",
+    "category": "Sportowe"
+  },
+  "kamacho": {
+    "display": "Kamacho",
+    "category": "Terenowe i Pickupy"
+  },
+  "lasso": {
+    "display": "Lasso",
+    "category": "Supersamochody"
+  },
+  "lombike": {
+    "display": "LomBike",
+    "category": "Rowery"
+  },
+  "mambagt": {
+    "display": "Mamba GT",
+    "category": "Supersamochody"
+  },
+  "mammatus": {
+    "display": "Mammatus",
+    "category": "Samoloty"
+  },
+  "manchez": {
+    "display": "Manchez",
+    "category": "Motocykle"
+  },
+  "maverick": {
+    "display": "Maverick",
+    "category": "Helikoptery"
+  },
+  "mesa": {
+    "display": "Mesa",
+    "category": "SUV i Kombi"
+  },
+  "minivan": {
+    "display": "Minivan",
+    "category": "Vany i Ciężarówki"
+  },
+  "mobilityscooter": {
+    "display": "Mobility scooter",
+    "category": "Rowery"
+  },
+  "montagne": {
+    "display": "Montagne",
+    "category": "SUV i Kombi"
+  },
+  "montagnexl": {
+    "display": "Montagne XL",
+    "category": "SUV i Kombi"
+  },
+  "mule": {
+    "display": "Mule",
+    "category": "Vany i Ciężarówki"
+  },
+  "nimbus": {
+    "display": "Nimbus",
+    "category": "Samoloty"
+  },
+  "outlaw": {
+    "display": "Outlaw",
+    "category": "Terenowe i Pickupy"
+  },
+  "packer": {
+    "display": "Packer",
+    "category": "Vany i Ciężarówki"
+  },
+  "penumbra": {
+    "display": "Penumbra",
+    "category": "Sportowe"
+  },
+  "phantom3": {
+    "display": "phantom3",
+    "category": "Vany i Ciężarówki"
+  },
+  "phoenix": {
+    "display": "Phoenix",
+    "category": "Muscle"
+  },
+  "pmp700": {
+    "display": "PMP 700",
+    "category": "Sedany i Coupe"
+  },
+  "primo": {
+    "display": "Primo",
+    "category": "Sedany i Coupe"
+  },
+  "rancher": {
+    "display": "Rancher",
+    "category": null
+  },
+  "rebel": {
+    "display": "Rebel",
+    "category": "Terenowe i Pickupy"
+  },
+  "reblagts": {
+    "display": "Rebla GTS",
+    "category": "SUV i Kombi"
+  },
+  "reclaimer": {
+    "display": "Reclaimer",
+    "category": "Terenowe i Pickupy"
+  },
+  "riataclassic": {
+    "display": "Riata Classic",
+    "category": "Terenowe i Pickupy"
+  },
+  "rubble": {
+    "display": "Rubble",
+    "category": "Vany i Ciężarówki"
+  },
+  "ruiner": {
+    "display": "Ruiner",
+    "category": "Muscle"
+  },
+  "sanchez": {
+    "display": "Sanchez",
+    "category": "Motocykle"
+  },
+  "schafters": {
+    "display": "Schafter S",
+    "category": "Sedany i Coupe"
+  },
+  "scorcher": {
+    "display": "Scorcher",
+    "category": "Rowery"
+  },
+  "shamal": {
+    "display": "Shamal",
+    "category": "Samoloty"
+  },
+  "shuttle": {
+    "display": "Shuttle",
+    "category": "Vany i Ciężarówki"
+  },
+  "slamvan": {
+    "display": "Slamvan",
+    "category": "Muscle"
+  },
+  "speedo": {
+    "display": "Speedo",
+    "category": "Vany i Ciężarówki"
+  },
+  "spritz": {
+    "display": "Spritz",
+    "category": "Vany i Ciężarówki"
+  },
+  "stanier": {
+    "display": "Stanier",
+    "category": "Sedany i Coupe"
+  },
+  "stanier55": {
+    "display": "Stanier55",
+    "category": "Sedany i Coupe"
+  },
+  "stanierg2": {
+    "display": "Stanier G2",
+    "category": "Sedany i Coupe"
+  },
+  "sugoi": {
+    "display": "Sugoi",
+    "category": "Sportowe"
+  },
+  "sultan": {
+    "display": "Sultan",
+    "category": "Sportowe"
+  },
+  "supervolito": {
+    "display": "SuperVolito",
+    "category": "Helikoptery"
+  },
+  "swift": {
+    "display": "Swift",
+    "category": "Helikoptery"
+  },
+  "tailgater2": {
+    "display": "Tailgater2",
+    "category": "Sedany i Coupe"
+  },
+  "tempesta": {
+    "display": "Tempesta",
+    "category": "Supersamochody"
+  },
+  "toros": {
+    "display": "Toros",
+    "category": "SUV i Kombi"
+  },
+  "transgressor": {
+    "display": "Transgressor",
+    "category": null
+  },
+  "tulip": {
+    "display": "Tulip",
+    "category": "Muscle"
+  },
+  "tulip2": {
+    "display": "tulip2",
+    "category": "Muscle"
+  },
+  "vectre": {
+    "display": "Vectre",
+    "category": "Sportowe"
+  },
+  "verus": {
+    "display": "Verus",
+    "category": "Terenowe i Pickupy"
+  },
+  "vitello": {
+    "display": "Vitello",
+    "category": "Supersamochody"
+  },
+  "vstr": {
+    "display": "V-STR",
+    "category": "Sedany i Coupe"
+  },
+  "woodland": {
+    "display": "Woodland",
+    "category": "SUV i Kombi"
+  },
+  "xls": {
+    "display": "XLS",
+    "category": "SUV i Kombi"
+  },
+  "yosemite1500": {
+    "display": "Yosemite 1500",
+    "category": "Terenowe i Pickupy"
+  },
+  "youga2": {
+    "display": "youga2",
+    "category": "Vany i Ciężarówki"
+  },
+  "zion2": {
+    "display": "Zion2",
+    "category": "Sedany i Coupe"
+  },
+  "zorrusso": {
+    "display": "Zorrusso",
+    "category": "Supersamochody"
+  }
+}
