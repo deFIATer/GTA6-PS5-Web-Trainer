@@ -2,6 +2,14 @@
 
 All notable changes to **GTA VI PS5 Web Trainer** are documented in this file.
 
+## [v1.2.1] - 2026-11-27
+### Added
+- **22 Live-Verified Top Vehicle Spawners in GoldHEN / etaHEN Cheat JSON (`cheats/PPSA38500_01.002.001.json`)**:
+  - Full x86-64 multi-frame streaming state machine (`StreamRequest → StreamReadyA/B → SpawnVehicle → StreamRelease`) using verified zeroed `.bss` scratch (`0x0E7C7F00`) and `scePadReadState` PLT hook (`0x08F67390`). Live-verified on PS5 (spawns cleanly in ~0.25s, zero conflict with all 6 original cheats!).
+  - Includes Top Supercars (`Thrax`, `Emerus`, `Vitello`), Sports/Classics (`Itali RSX`, `Comet Retro`, `Infernus '96`), Muscle (`Gauntlet Hellfire`, `Gauntlet Classic`, `Vigero ZX`), Motorcycles (`SFB 1000`, `Alvino V1`, `Carbon RS`, `Sanchez`, `Cliffhanger`, `Manchez`), Jets/Planes (`P-996 LAZER`, `Shamal`, `Nimbus`, `Mallard`), and Helicopters (`Buzzard`, `Valkyrie`, `Volatus`).
+### Fixed
+- **Time Presets & Vehicle Auto-Repair Hook in JSON**: Moved from `0x023E3FE8` (police tick, inactive at 0 stars) to `0x08F67390` (`scePadReadState` PLT stub), so Time Presets and Vehicle Auto-Repair work 100% of the time even with 0 wanted stars and never conflict with `Clear Wanted Level`.
+
 ## [v1.2.0] - 2026-11-27
 ### Added
 - **5 Native `eboot.bin` Game Patches in Player Tab (ELF & Python)**:
