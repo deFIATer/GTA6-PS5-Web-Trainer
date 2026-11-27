@@ -25,6 +25,7 @@
 #include "web_assets.h"
 
 #define HTTP_PORT 8080
+#define TRAINER_VERSION "ELF v1.0.1"
 #define PS5DBG_MAGIC 0xFFAABBCCu
 #define CMD_SUCCESS  0x80000000u
 
@@ -82,6 +83,7 @@ typedef struct {
     uint64_t hook_addr;
     uint64_t orig_pad;
     bool connected;
+    bool auto_connect;
     bool hook_installed;
     bool god_mode;
     bool never_wanted;
@@ -104,11 +106,14 @@ static TrainerState G = {
     .sock = -1,
     .host = "127.0.0.1",
     .port = 744,
+    .auto_connect = true,
     .ps5_notify = true,
     .lektor_rate = 195,
     .frozen_h = 12,
     .frozen_m = 0,
 };
+
+static int g_listen_fd = -1;
 
 /* ---------- Low-level TCP helpers ---------- */
 
@@ -483,10 +488,26 @@ static bool spawn_vehicle_streamed(uint64_t hash, char *err_buf, size_t err_sz) 
     return loaded;
 }
 
-static int trainer_connect_locked(const char *ip, int port) {
-    if (G.sock >= 0) { close(G.sock); G.sock = -1; }
+static void trainer_disconnect_locked(void) {
+    if (G.sock >= 0 && G.hook_installed && G.orig_pad != 0 && G.pid > 0 && G.base != 0) {
+        dbg_write(G.sock, G.pid, G.base + OFF_GOT_PAD_READ_STATE, &G.orig_pad, 8);
+    }
+    if (G.sock >= 0) {
+        close(G.sock);
+        G.sock = -1;
+    }
     G.connected = false;
     G.hook_installed = false;
+    G.pid = 0;
+    G.god_mode = false;
+    G.never_wanted = false;
+    G.freeze_time = false;
+    G.lektor_enabled = false;
+}
+
+static int trainer_connect_locked(const char *ip, int port) {
+    trainer_disconnect_locked();
+    G.auto_connect = true;
     if (ip && ip[0]) snprintf(G.host, sizeof(G.host), "%s", ip);
     if (port > 0) G.port = port;
 
@@ -546,7 +567,7 @@ static void *bg_thread_fn(void *arg) {
         usleep(250000);
         tick++;
         pthread_mutex_lock(&G.lock);
-        if (!G.connected && (tick % 12 == 0)) {
+        if (!G.connected && G.auto_connect && (tick % 12 == 0)) {
             if (trainer_connect_locked(G.host, G.port) == 0) {
                 dbg_notify("Auto-connected to GTA VI!");
             }
@@ -725,6 +746,7 @@ static void build_status_json(char *buf, size_t sz) {
     }
     int pos = snprintf(buf, sz,
         "{\"connected\":%s,\"version_ok\":%s,\"pid\":%d,\"titleid\":\"PPSA38500\",\"app_ver\":\"01.002.001\","
+        "\"trainer_version\":\"%s\",\"is_elf\":true,"
         "\"fw\":\"PS5\",\"kstuff\":true,\"etahen\":true,\"hook\":%s,\"in_vehicle\":%s,"
         "\"god_mode\":%s,\"never_wanted\":%s,\"freeze_time\":%s,\"ps5_notify\":%s,"
         "\"frozen_time\":\"%02d:%02d\",\"hour\":%d,\"minute\":%d,\"wanted\":%d,"
@@ -733,6 +755,7 @@ static void build_status_json(char *buf, size_t sz) {
         G.connected ? "true" : "false",
         G.connected ? "true" : "false",
         G.pid,
+        TRAINER_VERSION,
         G.hook_installed ? "true" : "false",
         in_veh ? "true" : "false",
         G.god_mode ? "true" : "false",
@@ -822,6 +845,22 @@ static void handle_client(int cfd) {
             ok = false;
             snprintf(msg, sizeof(msg), "%s", G.last_error);
         }
+    } else if (strcmp(path, "/api/disconnect") == 0) {
+        G.auto_connect = false;
+        trainer_disconnect_locked();
+        snprintf(msg, sizeof(msg), "Disconnected from PS5 (hook restored)");
+        dbg_notify("Disconnected from GTA VI.");
+    } else if (strcmp(path, "/api/shutdown") == 0) {
+        G.auto_connect = false;
+        trainer_disconnect_locked();
+        dbg_notify("ELF Server stopped (port 8080 free)");
+        pthread_mutex_unlock(&G.lock);
+        const char *bye = "{\"message\":\"ELF Server stopped. Port 8080 is now free for update.\"}";
+        http_send(cfd, 200, "application/json; charset=utf-8", bye, strlen(bye));
+        close(cfd);
+        if (g_listen_fd >= 0) close(g_listen_fd);
+        usleep(150000);
+        _exit(0);
     } else if (!G.connected || !G.hook_installed) {
         ok = false;
         snprintf(msg, sizeof(msg), "Not connected to PS5. Click Connect PS5 first.");
@@ -983,6 +1022,7 @@ int main(void) {
 
     int sfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sfd < 0) return 1;
+    g_listen_fd = sfd;
     int yes = 1;
     setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
 

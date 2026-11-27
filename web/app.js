@@ -30,7 +30,8 @@ const I18N = {
     nav_world: "World", nav_world_full: "World & Weather", nav_lektor: "Voice", nav_lektor_full: "Voiceover",
     nav_money: "Money", nav_ps5_full: "Money & PS5",
     credits_offsets: "Game offsets:", credits_cats: "Categories:", credits_footer: "Game offsets & vehicle list based on",
-    connect_ps5: "Connect PS5", refresh_status: "Refresh Status", disconnected: "Disconnected",
+    connect_ps5: "Connect PS5", disconnect_ps5: "🔌 Disconnect PS5", stop_elf: "🛑 Stop ELF Server (for update)",
+    refresh_status: "Refresh Status", disconnected: "Disconnected", stat_ver: "Trainer Version",
     quick_actions: "Quick Actions", btn_heal_all: "⚡ All-in-One (Heal + Armor + Repair)",
     btn_heal: "❤️ Heal", btn_armor: "🛡️ Armor", btn_repair: "🔧 Repair",
     protection_bg: "Protection (Background)", god_mode_sub: "Auto-Heal + Auto-Repair vehicle every 0.25s",
@@ -64,7 +65,8 @@ const I18N = {
     nav_world: "Świat", nav_world_full: "Świat i Pogoda", nav_lektor: "Lektor", nav_lektor_full: "Lektor PL",
     nav_money: "Kasa", nav_ps5_full: "Kasa i PS5",
     credits_offsets: "Offsety gry:", credits_cats: "Kategorie:", credits_footer: "Offsety gry i lista pojazdów na podstawie",
-    connect_ps5: "Połącz z PS5", refresh_status: "Odśwież status", disconnected: "Rozłączono",
+    connect_ps5: "Połącz z PS5", disconnect_ps5: "🔌 Rozłącz PS5", stop_elf: "🛑 Wyłącz serwer ELF (do aktualizacji)",
+    refresh_status: "Odśwież status", disconnected: "Rozłączono", stat_ver: "Wersja Trainera",
     quick_actions: "Szybkie akcje", btn_heal_all: "⚡ Wszystko (Heal + Pancerz + Auto)",
     btn_heal: "❤️ Heal", btn_armor: "🛡️ Pancerz", btn_repair: "🔧 Auto",
     protection_bg: "Ochrona (w tle)", god_mode_sub: "Auto-Heal + Auto-Naprawa pojazdu co 0.25s",
@@ -249,21 +251,34 @@ function applyStatus(s) {
   const b = document.getElementById("badge");
   const ps5Badge = document.getElementById("ps5-conn-badge");
   const btnConn = document.getElementById("btn-connect");
+  const btnDisc = document.getElementById("btn-disconnect");
+  const btnStopElf = document.getElementById("btn-stop-elf");
   const connActions = document.getElementById("ps5-conn-actions");
+  if (s.trainer_version) {
+    const tv = document.getElementById("trainer-ver");
+    const sv = document.getElementById("st-ver");
+    if (tv) tv.textContent = s.trainer_version;
+    if (sv) sv.textContent = s.trainer_version;
+  }
+  if (btnStopElf) btnStopElf.style.display = s.is_elf ? "" : "none";
+
   if (s.connected && s.version_ok) {
     b.textContent = "● PS5 OK"; b.className = "pill ok";
     ps5Badge.textContent = t("● Connected", "● Połączono"); ps5Badge.className = "pill ok";
     btnConn.style.display = "none";
-    connActions.style.gridTemplateColumns = "1fr";
+    if (btnDisc) btnDisc.style.display = "";
+    connActions.style.gridTemplateColumns = "";
   } else if (s.connected) {
     b.textContent = t("● Wrong version", "● Zła wersja"); b.className = "pill err";
     ps5Badge.textContent = t("● Wrong version", "● Zła wersja"); ps5Badge.className = "pill err";
     btnConn.style.display = "";
+    if (btnDisc) btnDisc.style.display = "none";
     connActions.style.gridTemplateColumns = "";
   } else {
     b.textContent = t("Connect PS5", "Połącz PS5"); b.className = "pill";
     ps5Badge.textContent = t("Disconnected", "Rozłączono"); ps5Badge.className = "pill";
     btnConn.style.display = "";
+    if (btnDisc) btnDisc.style.display = "none";
     connActions.style.gridTemplateColumns = "";
   }
 
@@ -388,6 +403,21 @@ async function doConnect() {
   const port = parseInt(document.getElementById("port").value, 10) || 744;
   showToast(t(`Connecting to ${ip}...`, `Łączenie z ${ip}...`));
   await callApi("/api/connect", { ip, port });
+}
+
+async function doDisconnect() {
+  showToast(t("Disconnecting from PS5...", "Rozłączanie z PS5..."));
+  await callApi("/api/disconnect", {});
+}
+
+async function doStopElf() {
+  const ok = confirm(t(
+    "Stop the ELF server on PS5? You will be able to upload a new GTA6WebTrainer.elf immediately.",
+    "Zatrzymać serwer ELF na PS5? Będziesz mógł od razu wgrać nową wersję GTA6WebTrainer.elf."
+  ));
+  if (!ok) return;
+  showToast(t("Stopping ELF server...", "Zatrzymywanie serwera ELF..."));
+  await callApi("/api/shutdown", {});
 }
 
 async function refreshStatus() {

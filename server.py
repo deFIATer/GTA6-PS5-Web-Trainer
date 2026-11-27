@@ -145,6 +145,10 @@ def make_handler(trainer: PS5Trainer, default_ip: str, default_port: int):
                     if st["version_ok"]:
                         trainer._notify_ps5("Połączono! Gotowy do gry.")
                     self._send_json(200, {"message": msg, "status": st})
+                elif self.path == "/api/disconnect":
+                    trainer.disconnect()
+                    trainer._log("API /api/disconnect -> Disconnected from PS5")
+                    self._send_json(200, {"message": "Disconnected from PS5.", "status": trainer.status()})
                 elif self.path == "/api/heal":
                     msg = trainer.heal_repair()
                     trainer._log(f"API /api/heal -> {msg}")

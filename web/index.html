@@ -27,7 +27,7 @@ try {
         <div class="brand-logo">VI</div>
         <div>
           <div class="brand-title" style="font-size:16px">GTA VI Trainer</div>
-          <div style="font-size:11px;color:var(--muted)">PS5Debug-NG · PPSA38500</div>
+          <div style="font-size:11px;color:var(--muted)">PS5Debug-NG · <span id="trainer-ver">v1.0.1</span></div>
         </div>
       </div>
       <nav class="side-nav">
@@ -204,13 +204,16 @@ try {
           </div>
           <div id="ps5-conn-actions" class="grid-2">
             <button id="btn-connect" class="btn primary" onclick="doConnect()" data-i18n="connect_ps5">Connect PS5</button>
+            <button id="btn-disconnect" class="btn" style="display:none;border-color:var(--err);color:var(--err)" onclick="doDisconnect()" data-i18n="disconnect_ps5">🔌 Disconnect PS5</button>
             <button class="btn" onclick="refreshStatus()" data-i18n="refresh_status">Refresh Status</button>
           </div>
+          <button id="btn-stop-elf" class="btn" style="display:none;margin-top:8px;border-color:var(--err);color:var(--err)" onclick="doStopElf()" data-i18n="stop_elf">🛑 Stop ELF Server (for update)</button>
           <div class="stats">
             <div class="stat"><div class="k" data-i18n="stat_game">Game</div><div class="v" id="st-game">—</div></div>
             <div class="stat"><div class="k">FW / PID</div><div class="v" id="st-pid">—</div></div>
             <div class="stat"><div class="k">kstuff / etaHEN</div><div class="v" id="st-env">—</div></div>
             <div class="stat"><div class="k" data-i18n="stat_hook">Hook / Vehicle</div><div class="v" id="st-veh">—</div></div>
+            <div class="stat" style="grid-column:span 2"><div class="k" data-i18n="stat_ver">Trainer Version</div><div class="v" id="st-ver">—</div></div>
           </div>
         </div>
 
