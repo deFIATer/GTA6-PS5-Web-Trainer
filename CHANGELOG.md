@@ -2,6 +2,11 @@
 
 All notable changes to **GTA VI PS5 Web Trainer** are documented in this file.
 
+## [v1.1.6] - 2026-11-27
+### Changed
+- **Money / Cash Module Marked as Beta (ELF & Web UI)**: Added a clear **Beta / Experimental** warning in the Money tab (`Money (Beta)` / `Kasa (Beta)`) and documentation noting that the Cash module in `GTA6WebTrainer.elf` is currently unreliable or may not work properly in-game.
+- **Roadmap to `v2.0.0`**: Once a 100% reliable, fully working Cash system is completed, it will be announced and released as **`v2.0.0`**. In the meantime, the **Player**, **Vehicles (Spawn)**, and **World** tabs are fully stable and recommended.
+
 ## [v1.1.5] - 2026-11-27
 ### Fixed
 - **Unique 64-bit Cash Inventory Signature (`0x6F0A8D016FC2266B`)**: Upgraded `0x11...` master wallet scanning in both `GTA6WebTrainer.elf` and Python from the generic 32-bit `0x6F0A8D01` tag (which matched 50+ unrelated items when cash was `$0` or `$1` and overflowed the address cap, leaving shops thinking you had no money!) to the exact 64-bit cash item ID `0x6F0A8D016FC2266B` (**1 unique hit in 2 GB RAM, 0 false positives**). Shops and car repairs now immediately recognize and spend your modified cash!

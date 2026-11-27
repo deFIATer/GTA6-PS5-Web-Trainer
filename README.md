@@ -8,11 +8,11 @@ Works on **PC, Mac, Linux, Tablet, and Phone** over Wi-Fi — **English (default
 ## Features
 
 - **Main-thread GOT Hook** (`scePadReadState`) — executes RAGE engine functions safely on the game's main thread.
-- **Player**: All-in-One (Heal + Armor + Repair), separate Heal / Armor / Repair, **God Mode** (auto-heal & auto-repair), **Never Wanted**, Wanted Level 0–5 & +/-1, **PS5 On-Screen Notifications** (3s paced dedicated TCP channel).
-- **Vehicles (254)**: Categorized using GTA Fandom Wiki names, instant search, Quick Spawn, and **Available in Game Only** live filter.
-- **World**: Time presets (Morning, Noon, Sunset, Midnight), custom time, **Freeze Time**, **Next Weather**.
-- **Money (experimental)**: Manual (exact cash) & Auto-Detect modes on dedicated TCP sockets.
-- **Live Subtitle Voiceover (100% Local, No API)**: Reads live in-game subtitles from PS5 RAM with FIFO queue (macOS `say` and/or Browser/Phone Web Speech API).
+- **Player** *(Recommended)*: All-in-One (Heal + Armor + Repair), separate Heal / Armor / Repair, **God Mode** (auto-heal & auto-repair), **Never Wanted**, Wanted Level 0–5 & +/-1, **PS5 On-Screen Notifications** (3s paced dedicated TCP channel).
+- **Vehicles (252)** *(Recommended)*: Verified against live PS5 `ArchetypeMap`, categorized using GTA Fandom Wiki names, instant search, persistent **⭐ Favorites**, Quick Spawn, and **Available in Game Only** live filter.
+- **World** *(Recommended)*: Time presets (Morning, Noon, Sunset, Midnight), custom time, **Freeze Time**.
+- **Money (Beta / Experimental)**: Currently unreliable / may not work in `GTA6WebTrainer.elf`. A fully working Cash module will be announced and released in **`v2.0.0`** — for now, please use the **Player**, **Vehicles (Spawn)**, and **World** tabs.
+- **Lektor PL (Beta)** *(Polish mode only)*: Reads live in-game subtitles from PS5 RAM with FIFO queue (macOS `say` and/or Browser/Phone Web Speech API).
 
 ---
 
