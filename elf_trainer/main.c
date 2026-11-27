@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -25,7 +26,7 @@
 #include "web_assets.h"
 
 #define HTTP_PORT 8080
-#define TRAINER_VERSION "ELF v1.0.4"
+#define TRAINER_VERSION "ELF v1.0.5"
 #define PS5DBG_MAGIC 0xFFAABBCCu
 #define CMD_SUCCESS  0x80000000u
 
@@ -142,7 +143,7 @@ static int recv_all(int fd, void *buf, size_t len) {
 static int tcp_connect(const char *ip, int port) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) return -1;
-    struct timeval tv = {.tv_sec = 5, .tv_usec = 0};
+    struct timeval tv = {.tv_sec = 3, .tv_usec = 0};
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
     struct sockaddr_in sa;
@@ -228,22 +229,50 @@ static int dbg_scan_u32(int fd, int pid, uint64_t addr, uint32_t length, uint32_
     return cnt;
 }
 
+static pthread_mutex_t g_notify_lock = PTHREAD_MUTEX_INITIALIZER;
+static char g_notify_pending[256] = {0};
+static bool g_notify_has_msg = false;
+
 static int dbg_notify(const char *msg) {
     if (!G.ps5_notify || !msg || !msg[0]) return 0;
-    int fd = tcp_connect(G.host, G.port);
-    if (fd < 0) return -1;
-    char full[256];
-    snprintf(full, sizeof(full), "GTA VI Trainer\n%s", msg);
-    uint32_t len = (uint32_t)strlen(full) + 1;
-    uint32_t body[2] = {222u, len};
-    int rc = -1;
-    if (dbg_send_cmd(fd, CMD_CONSOLE_NOTIFY, body, 8) == 0 &&
-        send_all(fd, full, len) == 0 &&
-        dbg_expect_ok(fd) == 0) {
-        rc = 0;
+    pthread_mutex_lock(&g_notify_lock);
+    snprintf(g_notify_pending, sizeof(g_notify_pending), "%s", msg);
+    g_notify_has_msg = true;
+    pthread_mutex_unlock(&g_notify_lock);
+    return 0;
+}
+
+static void *notify_thread_fn(void *arg) {
+    (void)arg;
+    for (;;) {
+        char msg[256] = {0};
+        bool has = false;
+        pthread_mutex_lock(&g_notify_lock);
+        if (g_notify_has_msg) {
+            snprintf(msg, sizeof(msg), "%s", g_notify_pending);
+            g_notify_has_msg = false;
+            has = true;
+        }
+        pthread_mutex_unlock(&g_notify_lock);
+        if (!has) { usleep(150000); continue; }
+        if (!G.ps5_notify) continue;
+
+        int fd = tcp_connect(G.host, G.port);
+        if (fd >= 0) {
+            char full[288];
+            snprintf(full, sizeof(full), "GTA VI Trainer\n%s", msg);
+            uint32_t len = (uint32_t)strlen(full) + 1;
+            uint32_t body[2] = {222u, len};
+            if (dbg_send_cmd(fd, CMD_CONSOLE_NOTIFY, body, 8) == 0 &&
+                send_all(fd, full, len) == 0) {
+                dbg_expect_ok(fd);
+            }
+            close(fd);
+        }
+        /* Pace notifications by 3s so PS5 never stacks a long queue */
+        usleep(3000000);
     }
-    close(fd);
-    return rc;
+    return NULL;
 }
 
 static int dbg_read(int fd, int pid, uint64_t addr, void *out, uint32_t len) {
@@ -361,16 +390,40 @@ static size_t build_pad_hook(uint64_t ctrl_addr, uint8_t *out) {
     return n;
 }
 
+static void drop_broken_conn_locked(void) {
+    if (G.sock >= 0) { close(G.sock); G.sock = -1; }
+    G.connected = false;
+    G.hook_installed = false;
+    G.pid = 0;
+}
+
 static uint64_t game_call8(uint64_t fn, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4,
                            uint64_t a5, uint64_t a6, uint64_t a7, uint64_t a8) {
     if (!G.connected || !G.hook_installed || G.sock < 0) return 0;
+    /* Ensure hook slot is idle before writing args (prevents main-thread race / crash) */
+    uint32_t cur_st = 0;
+    if (dbg_read(G.sock, G.pid, G.ctrl_addr + 0x08, &cur_st, 4) < 0) {
+        drop_broken_conn_locked();
+        return 0;
+    }
+    if (cur_st != 0) return 0;
+
     uint64_t args[9] = {fn, a1, a2, a3, a4, a5, a6, a7, a8};
-    if (dbg_write(G.sock, G.pid, G.ctrl_addr + 0x10, args, sizeof(args)) < 0) return 0;
+    if (dbg_write(G.sock, G.pid, G.ctrl_addr + 0x10, args, sizeof(args)) < 0) {
+        drop_broken_conn_locked();
+        return 0;
+    }
     uint32_t one = 1;
-    if (dbg_write(G.sock, G.pid, G.ctrl_addr + 0x08, &one, 4) < 0) return 0;
-    for (int i = 0; i < 200; i++) {
+    if (dbg_write(G.sock, G.pid, G.ctrl_addr + 0x08, &one, 4) < 0) {
+        drop_broken_conn_locked();
+        return 0;
+    }
+    for (int i = 0; i < 150; i++) {
         uint32_t st = 0;
-        if (dbg_read(G.sock, G.pid, G.ctrl_addr + 0x08, &st, 4) < 0) return 0;
+        if (dbg_read(G.sock, G.pid, G.ctrl_addr + 0x08, &st, 4) < 0) {
+            drop_broken_conn_locked();
+            return 0;
+        }
         if (st == 3) {
             uint64_t res = 0;
             dbg_read(G.sock, G.pid, G.ctrl_addr + 0x58, &res, 8);
@@ -380,6 +433,9 @@ static uint64_t game_call8(uint64_t fn, uint64_t a1, uint64_t a2, uint64_t a3, u
         }
         usleep(10000);
     }
+    /* Timed out waiting for main thread — reset state to 0 if still pending */
+    uint32_t zero = 0;
+    dbg_write(G.sock, G.pid, G.ctrl_addr + 0x08, &zero, 4);
     return 0;
 }
 
@@ -420,7 +476,7 @@ static bool lookup_model_id(uint64_t model_hash, uint32_t *out_val) {
         }
         free(keys); free(vals);
     }
-    if (!found && arr_ptr && cnt && cnt <= 65536) {
+    if (!found && arr_ptr && cnt) {
         uint8_t *arr = (uint8_t *)malloc(16ULL * cnt);
         if (arr && dbg_read(G.sock, G.pid, arr_ptr, arr, 16u * cnt) == 0) {
             for (uint32_t i = 0; i < cnt; i++) {
@@ -446,6 +502,30 @@ static bool lookup_model_id(uint64_t model_hash, uint32_t *out_val) {
 }
 
 static bool spawn_vehicle_streamed(uint64_t hash, char *err_buf, size_t err_sz) {
+    /* 1. Verify player ped exists (never spawn in menus / loading screens) */
+    uint64_t ped = 0;
+    if (dbg_read(G.sock, G.pid, G.base + OFF_LOCAL_PLAYER_PED, &ped, 8) < 0) {
+        drop_broken_conn_locked();
+        snprintf(err_buf, err_sz, "Lost connection to PS5");
+        return false;
+    }
+    if (!ped) {
+        snprintf(err_buf, err_sz, "Enter Story Mode first (no player ped)");
+        return false;
+    }
+    /* 2. Verify main-thread hook is actively ticking */
+    uint32_t t1 = 0, t2 = 0;
+    if (dbg_read(G.sock, G.pid, G.ctrl_addr + 0x0C, &t1, 4) < 0) {
+        drop_broken_conn_locked();
+        snprintf(err_buf, err_sz, "Lost connection to PS5");
+        return false;
+    }
+    usleep(120000);
+    if (dbg_read(G.sock, G.pid, G.ctrl_addr + 0x0C, &t2, 4) < 0 || t2 == t1) {
+        snprintf(err_buf, err_sz, "Game main thread paused (unpause game first)");
+        return false;
+    }
+
     uint32_t model_id = 0;
     if (!lookup_model_id(hash, &model_id)) {
         snprintf(err_buf, err_sz, "Model not found in ArchetypeMap");
@@ -463,7 +543,8 @@ static bool spawn_vehicle_streamed(uint64_t hash, char *err_buf, size_t err_sz) 
                0, 9, 1, 0, aux_ptr);
 
     bool loaded = false;
-    for (int i = 0; i < 75; i++) {
+    for (int i = 0; i < 50; i++) {
+        if (!G.connected) break;
         uint16_t req_val = 0;
         if (dbg_read(G.sock, G.pid, req_ptr, &req_val, 2) == 0 && (req_val & 0x3FFFu)) {
             uint64_t a = game_call(G.base + OFF_STREAM_READY_A, req_ptr, 0, 0, 0, 0) & 0xFF;
@@ -473,17 +554,19 @@ static bool spawn_vehicle_streamed(uint64_t hash, char *err_buf, size_t err_sz) 
         usleep(80000);
     }
 
-    if (loaded) {
+    if (loaded && G.connected) {
         uint32_t clear_handle = 0x1FFFFu;
         dbg_write(G.sock, G.pid, G.base + OFF_LAST_CHEAT_VEH, &clear_handle, 4);
         game_call(G.base + OFF_SPAWN_VEHICLE, hash, 0, 0, 0, 0);
-    } else {
-        snprintf(err_buf, err_sz, "Model stream timeout");
+    } else if (!loaded) {
+        snprintf(err_buf, err_sz, "Model stream timeout (not available here)");
     }
 
-    uint16_t req_val = 0;
-    if (dbg_read(G.sock, G.pid, req_ptr, &req_val, 2) == 0 && (req_val & 0x3FFFu)) {
-        game_call(G.base + OFF_STREAM_RELEASE, req_ptr, 0, 0, 0, 0);
+    if (G.connected) {
+        uint16_t req_val = 0;
+        if (dbg_read(G.sock, G.pid, req_ptr, &req_val, 2) == 0 && (req_val & 0x3FFFu)) {
+            game_call(G.base + OFF_STREAM_RELEASE, req_ptr, 0, 0, 0, 0);
+        }
     }
     return loaded;
 }
@@ -793,6 +876,9 @@ static void http_send(int fd, int code, const char *ct, const void *body, size_t
 }
 
 static void handle_client(int cfd) {
+    struct timeval ctv = {.tv_sec = 2, .tv_usec = 0};
+    setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, &ctv, sizeof(ctv));
+    setsockopt(cfd, SOL_SOCKET, SO_SNDTIMEO, &ctv, sizeof(ctv));
     char req[8192];
     ssize_t n = recv(cfd, req, sizeof(req) - 1, 0);
     if (n <= 0) { close(cfd); return; }
@@ -1014,11 +1100,14 @@ static void *tile_thread_fn(void *arg) {
 }
 
 int main(void) {
-    pthread_t bg, sub, tile;
+    signal(SIGPIPE, SIG_IGN);
+    pthread_t bg, sub, ntf, tile;
     pthread_create(&bg, NULL, bg_thread_fn, NULL);
     pthread_detach(bg);
     pthread_create(&sub, NULL, subtitle_thread_fn, NULL);
     pthread_detach(sub);
+    pthread_create(&ntf, NULL, notify_thread_fn, NULL);
+    pthread_detach(ntf);
 
     int sfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sfd < 0) return 1;
