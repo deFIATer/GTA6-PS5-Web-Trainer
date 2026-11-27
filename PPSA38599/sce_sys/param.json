@@ -1,9 +1,6 @@
 {
   "applicationCategoryType": 65536,
-  "applicationDrmType": "standard",
-  "attribute": 0,
-  "contentId": "IV0000-PPSA38599_00-GTAVIWEBTRAINER0",
-  "contentVersion": "01.000.000",
+  "titleId": "PPSA38599",
   "localizedParameters": {
     "defaultLanguage": "en-US",
     "en-US": {
@@ -13,6 +10,5 @@
       "titleName": "GTA VI Web Trainer"
     }
   },
-  "titleId": "PPSA38599",
-  "versionFileUri": ""
+  "deeplinkUri": "http://127.0.0.1:8080/"
 }
