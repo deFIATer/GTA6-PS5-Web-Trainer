@@ -596,7 +596,7 @@ init();
 
 /* ---------- DualSense / Gamepad & D-Pad Navigation ---------- */
 (function initGamepadNav() {
-  const TAB_ORDER = ["self", "vehicles", "world", "lektor", "ps5"];
+  const TAB_ORDER = ["self", "vehicles", "world", "lektor", "money", "ps5"];
   let focusIdx = -1;
   let lastMove = 0;
   let prevButtons = [];

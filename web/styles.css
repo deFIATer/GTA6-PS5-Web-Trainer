@@ -294,7 +294,7 @@
   }
   @container veh (inline-size > 34rem) { .veh-grid { grid-template-columns: repeat(3, 1fr); } }
   @container veh (inline-size > 48rem) { .veh-grid { grid-template-columns: repeat(4, 1fr); } }
-  @container veh (inline-size > 64rem) { .veh-grid { grid-template-columns: repeat(5, 1fr); } }
+  @container veh (inline-size > 64rem) { .veh-grid { grid-template-columns: repeat(6, 1fr); } }
   .veh-card {
     background: var(--surface2); border: 1px solid var(--border); color: var(--text);
     border-radius: 12px; padding: 11px 11px; text-align: left; cursor: pointer;
@@ -326,7 +326,7 @@
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid var(--border);
     padding: 6px max(8px, env(safe-area-inset-right, 0px)) max(6px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
   }
   .nav-btn {
     background: transparent; border: none; color: var(--muted);

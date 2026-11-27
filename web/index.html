@@ -35,7 +35,8 @@ try {
         <button class="side-btn" data-side="vehicles" onclick="switchTab('vehicles')"><span aria-hidden="true">🚗</span> <span data-i18n="nav_vehicles_full">Vehicles (254)</span></button>
         <button class="side-btn" data-side="world" onclick="switchTab('world')"><span aria-hidden="true">🌤️</span> <span data-i18n="nav_world_full">World &amp; Weather</span></button>
         <button class="side-btn" data-side="lektor" onclick="switchTab('lektor')"><span aria-hidden="true">🎙️</span> <span data-i18n="nav_lektor_full">Voiceover</span></button>
-        <button class="side-btn" data-side="ps5" onclick="switchTab('ps5')"><span aria-hidden="true">💰</span> <span data-i18n="nav_ps5_full">Money &amp; PS5</span></button>
+        <button class="side-btn" data-side="money" onclick="switchTab('money')"><span aria-hidden="true">💰</span> <span data-i18n="nav_money">Money</span></button>
+        <button class="side-btn" data-side="ps5" onclick="switchTab('ps5')"><span aria-hidden="true">🎮</span> <span>PS5</span></button>
       </nav>
     </div>
     <div class="side-footer">
@@ -151,8 +152,8 @@ try {
         </div>
       </section>
 
-      <!-- TAB 4: MONEY & PS5 -->
-      <section id="tab-ps5" class="tab-panel">
+      <!-- TAB 4: MONEY -->
+      <section id="tab-money" class="tab-panel">
         <div class="card">
           <div class="card-title">
             <span data-i18n="money_title">Money</span>
@@ -191,7 +192,10 @@ try {
             </div>
           </div>
         </div>
+      </section>
 
+      <!-- TAB 5: PS5 -->
+      <section id="tab-ps5" class="tab-panel">
         <div class="card">
           <div class="card-title">
             <span data-i18n="ps5_conn_title">PS5 Connection (PS5Debug-NG)</span>
@@ -310,7 +314,8 @@ try {
     <button class="nav-btn" data-tab="vehicles" onclick="switchTab('vehicles')"><span class="ico" aria-hidden="true">🚗</span><span data-i18n="nav_vehicles">Vehicles</span></button>
     <button class="nav-btn" data-tab="world" onclick="switchTab('world')"><span class="ico" aria-hidden="true">🌤️</span><span data-i18n="nav_world">World</span></button>
     <button class="nav-btn" data-tab="lektor" onclick="switchTab('lektor')"><span class="ico" aria-hidden="true">🎙️</span><span data-i18n="nav_lektor">Voice</span></button>
-    <button class="nav-btn" data-tab="ps5" onclick="switchTab('ps5')"><span class="ico" aria-hidden="true">💰</span><span data-i18n="nav_money">Money</span></button>
+    <button class="nav-btn" data-tab="money" onclick="switchTab('money')"><span class="ico" aria-hidden="true">💰</span><span data-i18n="nav_money">Money</span></button>
+    <button class="nav-btn" data-tab="ps5" onclick="switchTab('ps5')"><span class="ico" aria-hidden="true">🎮</span><span>PS5</span></button>
   </nav>
 </div>
 
