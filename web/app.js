@@ -1,7 +1,7 @@
 let allVehicles = [];
 let categories = [];
 let activeCategory = "Wszystkie";
-let currentView = window.innerWidth >= 900 ? "all" : "self";
+let currentView = "self";
 let currentLang = "en";
 try { currentLang = localStorage.getItem("trainer-lang") || "en"; } catch (e) {}
 
@@ -665,6 +665,10 @@ init();
 
       const axY = gp.axes && gp.axes.length > 1 ? gp.axes[1] : 0;
       const axX = gp.axes && gp.axes.length > 0 ? gp.axes[0] : 0;
+      const rStickY = gp.axes && gp.axes.length > 3 ? gp.axes[3] : 0;
+      if (Math.abs(rStickY) > 0.18) {
+        window.scrollBy(0, Math.round(rStickY * 24));
+      }
       const down = pressed(13) || pressed(15) || axY > 0.6 || axX > 0.6;
       const up = pressed(12) || pressed(14) || axY < -0.6 || axX < -0.6;
       if ((down || up) && (now - lastMove) > 170) {
