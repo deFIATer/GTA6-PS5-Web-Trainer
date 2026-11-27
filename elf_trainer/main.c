@@ -113,6 +113,10 @@ typedef struct {
     char last_error[256];
 } TrainerState;
 
+#define NP_MAX_ENTRIES 8
+static uint8_t g_np_orig[NATIVE_PATCHES_COUNT][NP_MAX_ENTRIES][512];
+static bool    g_np_orig_ok[NATIVE_PATCHES_COUNT][NP_MAX_ENTRIES];
+
 static TrainerState G = {
     .lock = PTHREAD_MUTEX_INITIALIZER,
     .sock = -1,
@@ -1438,15 +1442,23 @@ static void handle_client(int cfd) {
                     matched_np = true;
                     const NativePatchDef *pd = &NATIVE_PATCHES[pi];
                     bool enable = (en != 0);
-                    for (size_t k = 0; k < pd->count; k++) {
+                    bool was_on = G.native_patch_on[pi];
+                    for (size_t k = 0; k < pd->count && k < NP_MAX_ENTRIES; k++) {
                         size_t idx = enable ? k : (pd->count - 1 - k);
                         const NativePatchEntry *pe = &pd->entries[idx];
                         uint64_t addr = G.base + pe->offset;
+                        if (pe->len > sizeof(g_np_orig[0][0])) continue;
+                        if (enable && !was_on) {
+                            if (dbg_read(G.sock, G.pid, addr, g_np_orig[pi][k], (uint32_t)pe->len) == 0)
+                                g_np_orig_ok[pi][k] = true;
+                        }
+                        const uint8_t *wbuf = enable ? pe->on_bytes : (g_np_orig_ok[pi][k] ? g_np_orig[pi][k] : pe->off_bytes);
                         uint64_t page = addr & ~0x3FFFULL;
                         uint32_t plen = (uint32_t)(((addr + pe->len - page) + 0x3FFFULL) & ~0x3FFFULL);
                         dbg_protect(G.sock, G.pid, page, plen, 7);
-                        dbg_write(G.sock, G.pid, addr, enable ? pe->on_bytes : pe->off_bytes, (uint32_t)pe->len);
+                        dbg_write(G.sock, G.pid, addr, wbuf, (uint32_t)pe->len);
                         dbg_protect(G.sock, G.pid, page, plen, 5);
+                        if (!enable) g_np_orig_ok[pi][k] = false;
                     }
                     G.native_patch_on[pi] = enable;
                     snprintf(msg, sizeof(msg), "%s: %s", pd->label, enable ? "ON" : "OFF");
