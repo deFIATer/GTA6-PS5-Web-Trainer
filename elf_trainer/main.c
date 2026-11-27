@@ -26,7 +26,7 @@
 #include "web_assets.h"
 
 #define HTTP_PORT 8080
-#define TRAINER_VERSION "ELF v1.0.5"
+#define TRAINER_VERSION "ELF v1.0.6"
 #define PS5DBG_MAGIC 0xFFAABBCCu
 #define CMD_SUCCESS  0x80000000u
 
@@ -1079,6 +1079,12 @@ static void write_file_bytes(const char *path, const unsigned char *data, size_t
 static void *tile_thread_fn(void *arg) {
     (void)arg;
     const char *tid = "PPSA38599";
+    struct stat st1, st2;
+    if (stat("/user/app/PPSA38599/sce_sys/param.json", &st1) == 0 &&
+        stat("/user/app/PPSA38599/sce_sys/icon0.png", &st2) == 0 &&
+        (size_t)st2.st_size == ASSET_ICON0_PNG_len) {
+        return NULL; /* Tile already installed with latest icon — skip re-registration */
+    }
     mkdir("/user/app", 0700);
     mkdir("/user/app/PPSA38599", 0755);
     mkdir("/user/app/PPSA38599/sce_sys", 0755);
