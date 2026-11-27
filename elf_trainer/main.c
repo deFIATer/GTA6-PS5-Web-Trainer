@@ -51,9 +51,16 @@
 #define OFF_SET_PLAYER_WANTED  0x53ACD60ULL
 #define OFF_HEALTH_RESTORE     0x4F0C3B0ULL
 #define OFF_VEHICLE_FIX        0x80FEF80ULL
+#define OFF_STREAM_REQUEST     0x1908520ULL
+#define OFF_STREAM_READY_A     0x693730ULL
+#define OFF_STREAM_READY_B     0x685DF0ULL
+#define OFF_STREAM_RELEASE     0x6B9DA0ULL
 #define OFF_LOCAL_PLAYER_PED   0xDCDBCB0ULL
 #define OFF_LOCAL_PLAYER_VEH   0xDCEBCE0ULL
 #define OFF_GAME_CLOCK         0xDCEC6D0ULL
+#define OFF_STREAM_CTX         0xCC64B30ULL
+#define OFF_ARCHETYPE_MAP      0xE561800ULL
+#define OFF_LAST_CHEAT_VEH     0xA753E4CULL
 #define OFF_WANTED_LEVEL       0x5EFCULL
 
 typedef struct {
@@ -349,9 +356,10 @@ static size_t build_pad_hook(uint64_t ctrl_addr, uint8_t *out) {
     return n;
 }
 
-static uint64_t game_call(uint64_t fn, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t a5) {
+static uint64_t game_call8(uint64_t fn, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4,
+                           uint64_t a5, uint64_t a6, uint64_t a7, uint64_t a8) {
     if (!G.connected || !G.hook_installed || G.sock < 0) return 0;
-    uint64_t args[9] = {fn, a1, a2, a3, a4, a5, 0, 0, 0};
+    uint64_t args[9] = {fn, a1, a2, a3, a4, a5, a6, a7, a8};
     if (dbg_write(G.sock, G.pid, G.ctrl_addr + 0x10, args, sizeof(args)) < 0) return 0;
     uint32_t one = 1;
     if (dbg_write(G.sock, G.pid, G.ctrl_addr + 0x08, &one, 4) < 0) return 0;
@@ -368,6 +376,111 @@ static uint64_t game_call(uint64_t fn, uint64_t a1, uint64_t a2, uint64_t a3, ui
         usleep(10000);
     }
     return 0;
+}
+
+static uint64_t game_call(uint64_t fn, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t a5) {
+    return game_call8(fn, a1, a2, a3, a4, a5, 0, 0, 0);
+}
+
+static bool lookup_model_id(uint64_t model_hash, uint32_t *out_val) {
+    uint64_t amap = G.base + OFF_ARCHETYPE_MAP;
+    uint32_t buckets = 0;
+    if (dbg_read(G.sock, G.pid, amap + 4, &buckets, 4) < 0 || buckets == 0) return false;
+    uint64_t b = amap + 8 + (model_hash % (uint64_t)buckets) * 0x58ULL;
+    uint8_t bd[0x58];
+    if (dbg_read(G.sock, G.pid, b, bd, sizeof(bd)) < 0) return false;
+
+    uint32_t n = 0, ex = 0;
+    uint16_t cnt = 0;
+    uint64_t keys_ptr = 0, vals_ptr = 0, exl_ptr = 0, arr_ptr = 0;
+    memcpy(&n, bd + 4, 4);
+    memcpy(&keys_ptr, bd + 8, 8);
+    memcpy(&vals_ptr, bd + 0x18, 8);
+    memcpy(&ex, bd + 0x24, 4);
+    memcpy(&exl_ptr, bd + 0x28, 8);
+    memcpy(&arr_ptr, bd + 0x48, 8);
+    memcpy(&cnt, bd + 0x50, 2);
+
+    bool found = false;
+    uint32_t val = 0;
+    if (n && keys_ptr && vals_ptr && n <= 65536) {
+        uint64_t *keys = (uint64_t *)malloc(8ULL * n);
+        uint32_t *vals = (uint32_t *)malloc(4ULL * n);
+        if (keys && vals &&
+            dbg_read(G.sock, G.pid, keys_ptr, keys, 8u * n) == 0 &&
+            dbg_read(G.sock, G.pid, vals_ptr, vals, 4u * n) == 0) {
+            for (uint32_t i = 0; i < n; i++) {
+                if (keys[i] == model_hash) { val = vals[i]; found = true; break; }
+            }
+        }
+        free(keys); free(vals);
+    }
+    if (!found && arr_ptr && cnt && cnt <= 65536) {
+        uint8_t *arr = (uint8_t *)malloc(16ULL * cnt);
+        if (arr && dbg_read(G.sock, G.pid, arr_ptr, arr, 16u * cnt) == 0) {
+            for (uint32_t i = 0; i < cnt; i++) {
+                uint64_t k = 0;
+                memcpy(&k, arr + 16ULL * i, 8);
+                if (k == model_hash) { memcpy(&val, arr + 16ULL * i + 8, 4); found = true; break; }
+            }
+        }
+        free(arr);
+    }
+    if (!found) return false;
+    if (ex && exl_ptr && ex <= 65536) {
+        uint32_t *exl = (uint32_t *)malloc(4ULL * ex);
+        if (exl && dbg_read(G.sock, G.pid, exl_ptr, exl, 4u * ex) == 0) {
+            for (uint32_t i = 0; i < ex; i++) {
+                if (((val ^ exl[i]) & 0x3FFFFFu) == 0) { free(exl); return false; }
+            }
+        }
+        free(exl);
+    }
+    *out_val = val;
+    return true;
+}
+
+static bool spawn_vehicle_streamed(uint64_t hash, char *err_buf, size_t err_sz) {
+    uint32_t model_id = 0;
+    if (!lookup_model_id(hash, &model_id)) {
+        snprintf(err_buf, err_sz, "Model not found in ArchetypeMap");
+        return false;
+    }
+    uint64_t req_ptr = G.ctrl_addr + 0x100;
+    uint64_t model_ptr = G.ctrl_addr + 0x110;
+    uint64_t aux_ptr = G.ctrl_addr + 0x120;
+    uint8_t zeros[16] = {0};
+    dbg_write(G.sock, G.pid, req_ptr, zeros, 4);
+    dbg_write(G.sock, G.pid, model_ptr, &model_id, 4);
+    dbg_write(G.sock, G.pid, aux_ptr, zeros, 16);
+
+    game_call8(G.base + OFF_STREAM_REQUEST, req_ptr, model_ptr, G.base + OFF_STREAM_CTX,
+               0, 9, 1, 0, aux_ptr);
+
+    bool loaded = false;
+    for (int i = 0; i < 75; i++) {
+        uint16_t req_val = 0;
+        if (dbg_read(G.sock, G.pid, req_ptr, &req_val, 2) == 0 && (req_val & 0x3FFFu)) {
+            uint64_t a = game_call(G.base + OFF_STREAM_READY_A, req_ptr, 0, 0, 0, 0) & 0xFF;
+            uint64_t b = game_call(G.base + OFF_STREAM_READY_B, req_ptr, 0, 0, 0, 0) & 0xFF;
+            if (a && b) { loaded = true; break; }
+        }
+        usleep(80000);
+    }
+
+    if (loaded) {
+        uint32_t clear_handle = 0x1FFFFu;
+        dbg_write(G.sock, G.pid, G.base + OFF_LAST_CHEAT_VEH, &clear_handle, 4);
+        game_call(G.base + OFF_SPAWN_VEHICLE, hash, 0, 0, 0, 0);
+    } else {
+        snprintf(err_buf, err_sz, "Model stream timeout");
+    }
+
+    uint16_t req_val = 0;
+    if (dbg_read(G.sock, G.pid, req_ptr, &req_val, 2) == 0 && (req_val & 0x3FFFu)) {
+        game_call(G.base + OFF_STREAM_RELEASE, req_ptr, 0, 0, 0, 0);
+    }
+    return loaded;
 }
 
 static int trainer_connect_locked(const char *ip, int port) {
@@ -780,9 +893,14 @@ static void handle_client(int cfd) {
             }
         }
         if (hash) {
-            game_call(G.base + OFF_SPAWN_VEHICLE, hash, 0, 0, 0, 0);
-            snprintf(msg, sizeof(msg), "Spawned %s", vname);
-            dbg_notify(msg);
+            char serr[128] = {0};
+            if (spawn_vehicle_streamed(hash, serr, sizeof(serr))) {
+                snprintf(msg, sizeof(msg), "Spawned %s", vname);
+                dbg_notify(msg);
+            } else {
+                ok = false;
+                snprintf(msg, sizeof(msg), "%s: %s", vname, serr);
+            }
         } else {
             ok = false;
             snprintf(msg, sizeof(msg), "Unknown vehicle: %s", vname);
