@@ -754,3 +754,52 @@ init();
   }
   requestAnimationFrame(pollGamepad);
 })();
+
+/* ---- Waypoint teleport (added feature) ---- */
+(function () {
+  function mkButton() {
+    if (document.getElementById('tp-waypoint-btn')) return;
+    var btn = document.createElement('button');
+    btn.id = 'tp-waypoint-btn';
+    btn.className = 'btn';
+    btn.textContent = '\uD83D\uDCCD Teleport to Waypoint';
+    btn.style.cssText = 'position:fixed;right:16px;bottom:96px;z-index:99999;padding:14px 18px;font-size:15px;font-weight:700;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.45)';
+    btn.onclick = async function () {
+      try {
+        var r = await fetch('/api/teleport_waypoint', { method: 'POST' });
+        var j = await r.json().catch(function () { return {}; });
+        if (j && (j.message || j.error)) console.log('[waypoint]', j.message || j.error);
+      } catch (e) { console.log('waypoint tp error', e); }
+    };
+    var sbtn = document.createElement('button');
+    sbtn.id = 'tp-summon-btn';
+    sbtn.className = 'btn';
+    sbtn.textContent = '\uD83D\uDE97 Summon Car';
+    sbtn.style.cssText = 'position:fixed;right:16px;bottom:152px;z-index:99999;padding:14px 18px;font-size:15px;font-weight:700;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.45)';
+    sbtn.onclick = async function () {
+      try {
+        var r = await fetch('/api/summon_vehicle', { method: 'POST' });
+        var j = await r.json().catch(function () { return {}; });
+        if (j && (j.message || j.error)) console.log('[summon]', j.message || j.error);
+      } catch (e) { console.log('summon error', e); }
+    };
+    document.body.appendChild(sbtn);
+    document.body.appendChild(btn);
+    var lbl = document.createElement('div');
+    lbl.id = 'tp-waypoint-lbl';
+    lbl.style.cssText = 'position:fixed;right:16px;bottom:70px;z-index:99999;font-size:12px;opacity:.85;color:#eef2f8;text-shadow:0 1px 2px #000';
+    lbl.textContent = 'set a waypoint on the map';
+    document.body.appendChild(lbl);
+    setInterval(async function () {
+      try {
+        var r = await fetch('/api/waypoint', { cache: 'no-store' });
+        var j = await r.json();
+        lbl.textContent = j.ok && j.present
+          ? '(' + Math.round(j.x) + ', ' + Math.round(j.y) + ')'
+          : 'set a waypoint on the map';
+      } catch (e) {}
+    }, 3000);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mkButton);
+  else mkButton();
+})();
