@@ -2,6 +2,12 @@
 
 All notable changes to **GTA VI PS5 Web Trainer** are documented in this file.
 
+## [v1.1.5] - 2026-11-27
+### Fixed
+- **Unique 64-bit Cash Inventory Signature (`0x6F0A8D016FC2266B`)**: Upgraded `0x11...` master wallet scanning in both `GTA6WebTrainer.elf` and Python from the generic 32-bit `0x6F0A8D01` tag (which matched 50+ unrelated items when cash was `$0` or `$1` and overflowed the address cap, leaving shops thinking you had no money!) to the exact 64-bit cash item ID `0x6F0A8D016FC2266B` (**1 unique hit in 2 GB RAM, 0 false positives**). Shops and car repairs now immediately recognize and spend your modified cash!
+- **Prioritized Master Scan Order**: Scans `0xf0...` (RAGEVM) and `0x11...` (`0x6F0A8D016FC2266B`) first before `0xfa...`, ensuring authoritative shop/wallet addresses are always captured first.
+- **ELF Startup Notification**: Displays `GTA VI Trainer / ELF v1.1.5 by deFIATer/czupryneq (Port 8080)` on launch.
+
 ## [v1.1.4] - 2026-11-27
 ### Fixed
 - **ELF Money Scanner 3s Socket Timeout**: Dedicated PS5 RAM scanner sockets (`money_scan_stats_c`, `money_scan_master_c`, `money_scan_hud_c`) now use a **30-second timeout** (`tcp_connect_timeout(..., 30)`) and 128 MB chunks instead of the 3-second RPC timeout, preventing `CMD_PROC_SCAN_START` on `0x11...` from aborting silently before finding Master and HUD wallet addresses.

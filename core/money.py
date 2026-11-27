@@ -189,22 +189,22 @@ class MoneyMixin:
                             except Exception:
                                 pass
                     elif is_11:
-                        # Tag 0x6F0A8D01 sits at +20 from cash value; +8 is 0x8000000000000000
+                        # Unique 64-bit cash inventory item tag 0x6F0A8D016FC2266B sits at +16 from cash value (0 false hits!)
                         res = proc_scan_start(
                             scan_ps5.connection,
                             pid,
                             addr,
                             length,
-                            int(ScanValueType.UINT32),
+                            int(ScanValueType.UINT64),
                             int(ScanCompareType.EXACT_VALUE),
-                            4,
-                            0x6F0A8D01,
+                            8,
+                            0x6F0A8D016FC2266B,
                         )
                         for off, _ in res:
-                            a = addr + off - 20
+                            a = addr + off - 16
                             try:
-                                ctx = scan_ps5.read(pid, a, 24)
-                                v, z, hi_flag = struct.unpack("<iIQ", ctx[:16])
+                                ctx = scan_ps5.read(pid, a, 16)
+                                v, z, hi_flag = struct.unpack("<iIQ", ctx)
                                 if v == amount and z == 0 and hi_flag == 0x8000000000000000:
                                     found.append(a)
                             except Exception:

@@ -27,7 +27,7 @@
 #include "web_assets.h"
 
 #define HTTP_PORT 8080
-#define TRAINER_VERSION "ELF v1.1.4"
+#define TRAINER_VERSION "ELF v1.1.5"
 #define PS5DBG_MAGIC 0xFFAABBCCu
 #define CMD_SUCCESS  0x80000000u
 
@@ -820,7 +820,13 @@ static int money_scan_master_c(const char *host, int port, int pid, int32_t amou
     uint32_t *offs = (uint32_t *)malloc(4096 * sizeof(uint32_t));
     if (!offs) { close(fd); return -1; }
     uint64_t pat_f0 = 0x00000804ULL | (((uint64_t)(uint32_t)amount) << 32);
-    for (int r = 0; r < rcnt && !G.money_cancel; r++) {
+    static const uint64_t CASH_ITEM_TAG = 0x6F0A8D016FC2266BULL;
+    /* Pass order: kind 1 (0xf0 RAGEVM) -> kind 3 (0x11 unique cash item) -> kind 2 (0xfa script) */
+    static const int pass_order[3] = {1, 3, 2};
+    for (int p = 0; p < 3 && !G.money_cancel; p++) {
+      int want_kind = pass_order[p];
+      for (int r = 0; r < rcnt && !G.money_cancel; r++) {
+        if (ranges[r].kind != want_kind) continue;
         uint64_t addr = ranges[r].s;
         while (addr < ranges[r].e && !G.money_cancel) {
             uint32_t len = (uint32_t)((ranges[r].e - addr > 0x08000000ULL) ? 0x08000000ULL : (ranges[r].e - addr));
@@ -837,7 +843,19 @@ static int money_scan_master_c(const char *host, int port, int pid, int32_t amou
                         }
                     }
                 }
-            } else if (ranges[r].kind == 2) {
+            } else if (ranges[r].kind == 3) {
+                /* 0x11.. authoritative cash inventory item: unique 64-bit tag 0x6F0A8D016FC2266B at +16 (0 false hits!) */
+                int n = dbg_scan_u64(fd, pid, addr, len, CASH_ITEM_TAG, offs, 4096);
+                if (n < 0) break;
+                for (int i = 0; i < n && found < max_out && !G.money_cancel; i++) {
+                    uint64_t a = addr + offs[i] - 16;
+                    struct __attribute__((packed)) { int32_t v; uint32_t z; uint64_t flag; } c;
+                    if (dbg_read(fd, pid, a, &c, sizeof(c)) == 0 &&
+                        c.v == amount && c.z == 0 && c.flag == 0x8000000000000000ULL) {
+                        out_addrs[found++] = a;
+                    }
+                }
+            } else {
                 /* 0xfa.. script wallet: scan tag 0x6F0A8D01 (align 4) */
                 int n = dbg_scan_u32_align(fd, pid, addr, len, 4, 0x6F0A8D01u, offs, 4096);
                 if (n < 0) break;
@@ -848,21 +866,10 @@ static int money_scan_master_c(const char *host, int port, int pid, int32_t amou
                         out_addrs[found++] = a;
                     }
                 }
-            } else {
-                /* 0x11.. master copy: scan tag 0x6F0A8D01 (align 4) */
-                int n = dbg_scan_u32_align(fd, pid, addr, len, 4, 0x6F0A8D01u, offs, 4096);
-                if (n < 0) break;
-                for (int i = 0; i < n && found < max_out && !G.money_cancel; i++) {
-                    uint64_t a = addr + offs[i] - 20;
-                    struct __attribute__((packed)) { int32_t v; uint32_t z; uint64_t flag; } c;
-                    if (dbg_read(fd, pid, a, &c, sizeof(c)) == 0 &&
-                        c.v == amount && c.z == 0 && c.flag == 0x8000000000000000ULL) {
-                        out_addrs[found++] = a;
-                    }
-                }
             }
             addr += len;
         }
+      }
     }
     free(offs);
     close(fd);
