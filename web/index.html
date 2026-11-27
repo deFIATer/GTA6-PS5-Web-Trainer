@@ -105,6 +105,45 @@ try {
         </div>
 
         <div class="card">
+          <div class="card-title" data-i18n="native_patches_title">Native Game Patches (eboot.bin)</div>
+          <div class="switch-row" onclick="toggleOpt('unlimited_health')">
+            <div>
+              <div class="switch-label" data-i18n="np_health">🛡️ Unlimited Health (Native)</div>
+              <div class="switch-sub" data-i18n="np_health_sub">Prevents nonlethal health loss natively</div>
+            </div>
+            <div id="sw-n-hp" class="switch"></div>
+          </div>
+          <div class="switch-row" onclick="toggleOpt('unlimited_stamina')">
+            <div>
+              <div class="switch-label" data-i18n="np_stamina">⚡ Unlimited Stamina</div>
+              <div class="switch-sub" data-i18n="np_stamina_sub">Prevents stamina drain while sprinting</div>
+            </div>
+            <div id="sw-n-stam" class="switch"></div>
+          </div>
+          <div class="switch-row" onclick="toggleOpt('infinite_ammo')">
+            <div>
+              <div class="switch-label" data-i18n="np_ammo">🔫 Infinite Ammo</div>
+              <div class="switch-sub" data-i18n="np_ammo_sub">Prevents ammo use when firing</div>
+            </div>
+            <div id="sw-n-ammo" class="switch"></div>
+          </div>
+          <div class="switch-row" onclick="toggleOpt('max_relationship')">
+            <div>
+              <div class="switch-label" data-i18n="np_rel">❤️ Max Relationship</div>
+              <div class="switch-sub" data-i18n="np_rel_sub">Sets Jason &amp; Lucia relationship score to max</div>
+            </div>
+            <div id="sw-n-rel" class="switch"></div>
+          </div>
+          <div class="switch-row" onclick="toggleOpt('max_criminal_profile')">
+            <div>
+              <div class="switch-label" data-i18n="np_crim">⭐ Max Criminal Profile</div>
+              <div class="switch-sub" data-i18n="np_crim_sub">Sets your criminal profile to Professional</div>
+            </div>
+            <div id="sw-n-crim" class="switch"></div>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="card-title" data-i18n="wanted_title">Wanted Level</div>
           <div class="grid-6" style="margin-bottom:8px">
             <button class="btn" onclick="callApi('/api/wanted', {level:0})">0</button>

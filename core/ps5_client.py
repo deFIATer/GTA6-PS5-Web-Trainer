@@ -15,6 +15,7 @@ from typing import Any
 from ps5dbg import PS5Debug
 from ps5dbg.protocol import expect_success
 
+from .patches import NATIVE_PATCHES
 from .constants import (
     CMD_CONSOLE_NOTIFY,
     CMD_PROC_CALL,
@@ -112,6 +113,7 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
         self.never_wanted: bool = False
         self.freeze_time: bool = False
         self.ps5_notify: bool = True
+        self.native_patches: dict[str, bool] = {k: False for k in NATIVE_PATCHES}
         self.frozen_h: int = 12
         self.frozen_m: int = 0
         self.money_candidates: list[int] = []
@@ -536,7 +538,7 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
                 "base": hex(self.base) if self.base else None,
                 "titleid": self.titleid,
                 "app_ver": self.app_ver,
-                "trainer_version": "Python v1.1.6",
+                "trainer_version": "Python v1.2.0",
                 "is_elf": False,
                 "fw": self.fw_str,
                 "kstuff": self.kstuff_active,
@@ -547,6 +549,11 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
                 "never_wanted": self.never_wanted,
                 "freeze_time": self.freeze_time,
                 "ps5_notify": self.ps5_notify,
+                "unlimited_health": self.native_patches["unlimited_health"],
+                "unlimited_stamina": self.native_patches["unlimited_stamina"],
+                "infinite_ammo": self.native_patches["infinite_ammo"],
+                "max_relationship": self.native_patches["max_relationship"],
+                "max_criminal_profile": self.native_patches["max_criminal_profile"],
                 "frozen_time": f"{self.frozen_h:02d}:{self.frozen_m:02d}",
                 "hour": -1,
                 "minute": -1,
@@ -577,7 +584,7 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
                 "base": hex(self.base) if self.base else None,
                 "titleid": self.titleid,
                 "app_ver": self.app_ver,
-                "trainer_version": "Python v1.1.6",
+                "trainer_version": "Python v1.2.0",
                 "is_elf": False,
                 "fw": self.fw_str,
                 "kstuff": self.kstuff_active,
@@ -588,6 +595,11 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
                 "never_wanted": self.never_wanted,
                 "freeze_time": self.freeze_time,
                 "ps5_notify": self.ps5_notify,
+                "unlimited_health": self.native_patches["unlimited_health"],
+                "unlimited_stamina": self.native_patches["unlimited_stamina"],
+                "infinite_ammo": self.native_patches["infinite_ammo"],
+                "max_relationship": self.native_patches["max_relationship"],
+                "max_criminal_profile": self.native_patches["max_criminal_profile"],
                 "frozen_time": f"{self.frozen_h:02d}:{self.frozen_m:02d}",
                 "hour": -1,
                 "minute": -1,
@@ -759,6 +771,22 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
                 return (
                     f"Freeze Time: {'WŁĄCZONE (' + f'{self.frozen_h:02d}:{self.frozen_m:02d})' if enabled else 'WYŁĄCZONE'}"
                 )
+            if name in NATIVE_PATCHES:
+                self._require_ready()
+                pdef = NATIVE_PATCHES[name]
+                entries = pdef["entries"] if enabled else list(reversed(pdef["entries"]))
+                for off, on_b, off_b in entries:
+                    data = on_b if enabled else off_b
+                    addr = self.base + off
+                    page = addr & ~0x3FFF
+                    plen = ((addr + len(data) - page) + 0x3FFF) & ~0x3FFF
+                    self._proc_protect(page, plen, 7)
+                    self._proc_write(addr, data)
+                    self._proc_protect(page, plen, 5)
+                self.native_patches[name] = enabled
+                state_txt = "ON" if enabled else "OFF"
+                self._notify_ps5(f"{pdef['label']}: {state_txt}")
+                return f"{pdef['label']}: {state_txt}"
             raise ValueError(f"Nieznany przełącznik: {name}")
 
 

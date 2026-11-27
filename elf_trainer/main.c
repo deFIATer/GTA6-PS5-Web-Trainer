@@ -22,12 +22,13 @@
 #include <unistd.h>
 #include <ps5/kernel.h>
 
+#include "native_patches.h"
 #include "tile_assets.h"
 #include "vehicles_data.h"
 #include "web_assets.h"
 
 #define HTTP_PORT 8080
-#define TRAINER_VERSION "ELF v1.1.6"
+#define TRAINER_VERSION "ELF v1.2.0"
 #define PS5DBG_MAGIC 0xFFAABBCCu
 #define CMD_SUCCESS  0x80000000u
 
@@ -91,6 +92,7 @@ typedef struct {
     bool never_wanted;
     bool freeze_time;
     bool ps5_notify;
+    bool native_patch_on[NATIVE_PATCHES_COUNT];
     bool lektor_enabled;
     bool lektor_read_speaker;
     int lektor_rate;
@@ -1211,6 +1213,8 @@ static void build_status_json(char *buf, size_t sz) {
         "\"trainer_version\":\"%s\",\"is_elf\":true,"
         "\"fw\":\"PS5\",\"kstuff\":true,\"etahen\":true,\"hook\":%s,\"in_vehicle\":%s,"
         "\"god_mode\":%s,\"never_wanted\":%s,\"freeze_time\":%s,\"ps5_notify\":%s,"
+        "\"unlimited_health\":%s,\"unlimited_stamina\":%s,\"infinite_ammo\":%s,"
+        "\"max_relationship\":%s,\"max_criminal_profile\":%s,"
         "\"frozen_time\":\"%02d:%02d\",\"hour\":%d,\"minute\":%d,\"wanted\":%d,"
         "\"money\":%d,\"money_mode\":\"%s\",\"money_watch_note\":\"%s\",\"lektor_enabled\":%s,\"lektor_mac_say\":false,"
         "\"lektor_read_speaker\":%s,\"lektor_rate\":%d,\"subtitle_seq\":%d",
@@ -1224,6 +1228,11 @@ static void build_status_json(char *buf, size_t sz) {
         G.never_wanted ? "true" : "false",
         G.freeze_time ? "true" : "false",
         G.ps5_notify ? "true" : "false",
+        G.native_patch_on[0] ? "true" : "false",
+        G.native_patch_on[1] ? "true" : "false",
+        G.native_patch_on[2] ? "true" : "false",
+        G.native_patch_on[3] ? "true" : "false",
+        G.native_patch_on[4] ? "true" : "false",
         G.frozen_h, G.frozen_m, h, m, wanted,
         money_val, G.money_mode, G.money_note,
         G.lektor_enabled ? "true" : "false",
@@ -1421,8 +1430,38 @@ static void handle_client(int cfd) {
         else if (strcmp(name, "ps5_notify") == 0) G.ps5_notify = (en != 0);
         else if (strcmp(name, "lektor_enabled") == 0) G.lektor_enabled = (en != 0);
         else if (strcmp(name, "lektor_read_speaker") == 0) G.lektor_read_speaker = (en != 0);
+        else {
+            bool matched_np = false;
+            for (int pi = 0; pi < NATIVE_PATCHES_COUNT; pi++) {
+                if (strcmp(name, NATIVE_PATCHES[pi].key) == 0) {
+                    matched_np = true;
+                    const NativePatchDef *pd = &NATIVE_PATCHES[pi];
+                    bool enable = (en != 0);
+                    for (size_t k = 0; k < pd->count; k++) {
+                        size_t idx = enable ? k : (pd->count - 1 - k);
+                        const NativePatchEntry *pe = &pd->entries[idx];
+                        uint64_t addr = G.base + pe->offset;
+                        uint64_t page = addr & ~0x3FFFULL;
+                        uint32_t plen = (uint32_t)(((addr + pe->len - page) + 0x3FFFULL) & ~0x3FFFULL);
+                        dbg_protect(G.sock, G.pid, page, plen, 7);
+                        dbg_write(G.sock, G.pid, addr, enable ? pe->on_bytes : pe->off_bytes, (uint32_t)pe->len);
+                        dbg_protect(G.sock, G.pid, page, plen, 5);
+                    }
+                    G.native_patch_on[pi] = enable;
+                    snprintf(msg, sizeof(msg), "%s: %s", pd->label, enable ? "ON" : "OFF");
+                    dbg_notify(msg);
+                    break;
+                }
+            }
+            if (!matched_np) {
+                snprintf(msg, sizeof(msg), "%s: %s", name, en ? "ON" : "OFF");
+                dbg_notify(msg);
+            }
+            goto toggle_done;
+        }
         snprintf(msg, sizeof(msg), "%s: %s", name, en ? "ON" : "OFF");
         dbg_notify(msg);
+        toggle_done:;
     } else if (strcmp(path, "/api/money/find") == 0) {
         int amt = 0;
         json_get_int(body, "amount", &amt);

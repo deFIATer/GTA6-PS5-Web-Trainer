@@ -2,6 +2,18 @@
 
 All notable changes to **GTA VI PS5 Web Trainer** are documented in this file.
 
+## [v1.2.0] - 2026-11-27
+### Added
+- **5 Native `eboot.bin` Game Patches in Player Tab (ELF & Python)**:
+  - **🛡️ Unlimited Health (Native)** — prevents nonlethal health loss natively in game code (no 0.25s loop needed).
+  - **⚡ Unlimited Stamina** — prevents stamina drain while sprinting/swimming.
+  - **🔫 Infinite Ammo** — prevents ammo consumption when firing.
+  - **❤️ Max Relationship** — sets relationship score to maximum.
+  - **⭐ Max Criminal Profile** — sets criminal profile to Professional.
+  - All 5 patches safely toggle ON/OFF (code caves written first on enable, unhooked first on disable, `RWX → write → RX` page protection).
+- **Updated GoldHEN / etaHEN Cheat JSON (`cheats/PPSA38500_01.002.001.json`)**:
+  - Added 5 new native x86-64 code-cave cheats alongside the existing 6: **Time: Morning (08:00)**, **Time: Noon (12:00)**, **Time: Sunset (19:00)**, **Time: Midnight (00:00)**, and **Vehicle Auto-Repair**.
+
 ## [v1.1.6] - 2026-11-27
 ### Changed
 - **Money / Cash Module Marked as Beta (ELF & Web UI)**: Added a clear **Beta / Experimental** warning in the Money tab (`Money (Beta)` / `Kasa (Beta)`) and documentation noting that the Cash module in `GTA6WebTrainer.elf` is currently unreliable or may not work properly in-game.

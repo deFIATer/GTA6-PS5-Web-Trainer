@@ -8,7 +8,8 @@ Works on **PC, Mac, Linux, Tablet, and Phone** over Wi-Fi — **English (default
 ## Features
 
 - **Main-thread GOT Hook** (`scePadReadState`) — executes RAGE engine functions safely on the game's main thread.
-- **Player** *(Recommended)*: All-in-One (Heal + Armor + Repair), separate Heal / Armor / Repair, **God Mode** (auto-heal & auto-repair), **Never Wanted**, Wanted Level 0–5 & +/-1, **PS5 On-Screen Notifications** (3s paced dedicated TCP channel).
+- **Player** *(Recommended)*: All-in-One (Heal + Armor + Repair), separate Heal / Armor / Repair, **God Mode** (auto-heal & auto-repair), **Never Wanted**, Wanted Level 0–5 & +/-1, **PS5 On-Screen Notifications** (3s paced dedicated TCP channel), plus **5 Native `eboot.bin` Patches**: **Unlimited Health (Native)**, **Unlimited Stamina**, **Infinite Ammo**, **Max Relationship**, and **Max Criminal Profile**.
+- **GoldHEN / etaHEN Cheat JSON**: Included in [`cheats/PPSA38500_01.002.001.json`](cheats/PPSA38500_01.002.001.json) with all 11 native x86-64 code-cave cheats (Health, Stamina, Ammo, Wanted, Relationship, Criminal Profile, Time Presets 08:00/12:00/19:00/00:00, and Vehicle Auto-Repair).
 - **Vehicles (252)** *(Recommended)*: Verified against live PS5 `ArchetypeMap`, categorized using GTA Fandom Wiki names, instant search, persistent **⭐ Favorites**, Quick Spawn, and **Available in Game Only** live filter.
 - **World** *(Recommended)*: Time presets (Morning, Noon, Sunset, Midnight), custom time, **Freeze Time**.
 - **Money (Beta / Experimental)**: Currently unreliable / may not work in `GTA6WebTrainer.elf`. A fully working Cash module will be announced and released in **`v2.0.0`** — for now, please use the **Player**, **Vehicles (Spawn)**, and **World** tabs.

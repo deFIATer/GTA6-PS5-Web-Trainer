@@ -37,6 +37,12 @@ const I18N = {
     protection_bg: "Protection (Background)", god_mode_sub: "Auto-Heal + Auto-Repair vehicle every 0.25s",
     never_wanted_sub: "Automatically clears police wanted stars",
     ps5_notify_lbl: "🔔 PS5 Notifications", ps5_notify_sub: "Shows action toasts on your TV screen",
+    native_patches_title: "Native Game Patches (eboot.bin)",
+    np_health: "🛡️ Unlimited Health (Native)", np_health_sub: "Prevents nonlethal health loss natively",
+    np_stamina: "⚡ Unlimited Stamina", np_stamina_sub: "Prevents stamina drain while sprinting",
+    np_ammo: "🔫 Infinite Ammo", np_ammo_sub: "Prevents ammo use when firing",
+    np_rel: "❤️ Max Relationship", np_rel_sub: "Sets Jason & Lucia relationship score to max",
+    np_crim: "⭐ Max Criminal Profile", np_crim_sub: "Sets your criminal profile to Professional",
     wanted_title: "Wanted Level", time_title: "Time of Day",
     time_morning: "🌅 Morning (08:00)", time_noon: "☀️ Noon (12:00)", time_sunset: "🌇 Sunset (19:00)", time_night: "🌙 Midnight (00:00)",
     btn_set: "Set", freeze_sub: "Locks the in-game clock at the current hour",
@@ -73,6 +79,12 @@ const I18N = {
     protection_bg: "Ochrona (w tle)", god_mode_sub: "Auto-Heal + Auto-Naprawa pojazdu co 0.25s",
     never_wanted_sub: "Automatycznie zeruje gwiazdki policji",
     ps5_notify_lbl: "🔔 Powiadomienia na PS5", ps5_notify_sub: "Wyświetla akcje w rogu ekranu telewizora",
+    native_patches_title: "Natywne patche gry (eboot.bin)",
+    np_health: "🛡️ Nieskończone Zdrowie (Natywne)", np_health_sub: "Blokuje utratę HP natywnie w kodzie gry",
+    np_stamina: "⚡ Nieskończona Stamina", np_stamina_sub: "Brak zmęczenia podczas biegu i pływania",
+    np_ammo: "🔫 Nieskończona Amunicja", np_ammo_sub: "Amunicja nie spada podczas strzelania",
+    np_rel: "❤️ Max Relacja (Relationship)", np_rel_sub: "Ustawia maksymalny poziom relacji postaci",
+    np_crim: "⭐ Max Profil Kryminalny", np_crim_sub: "Ustawia profil przestępczy na Professional",
     wanted_title: "Poziom Policji (Wanted Level)", time_title: "Pora dnia",
     time_morning: "🌅 Rano (08:00)", time_noon: "☀️ Południe (12:00)", time_sunset: "🌇 Zachód (19:00)", time_night: "🌙 Noc (00:00)",
     btn_set: "Ustaw", freeze_sub: "Zatrzymuje zegar na obecnej godzinie",
@@ -308,6 +320,11 @@ function applyStatus(s) {
   document.getElementById("sw-gm").classList.toggle("on", state.god_mode);
   document.getElementById("sw-nw").classList.toggle("on", state.never_wanted);
   document.getElementById("sw-ntf").classList.toggle("on", state.ps5_notify);
+  document.getElementById("sw-n-hp").classList.toggle("on", !!state.unlimited_health);
+  document.getElementById("sw-n-stam").classList.toggle("on", !!state.unlimited_stamina);
+  document.getElementById("sw-n-ammo").classList.toggle("on", !!state.infinite_ammo);
+  document.getElementById("sw-n-rel").classList.toggle("on", !!state.max_relationship);
+  document.getElementById("sw-n-crim").classList.toggle("on", !!state.max_criminal_profile);
   document.getElementById("sw-ft").classList.toggle("on", state.freeze_time);
   document.getElementById("sw-lek").classList.toggle("on", state.lektor_enabled);
   document.getElementById("sw-macsay").classList.toggle("on", state.lektor_mac_say);
