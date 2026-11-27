@@ -1,8 +1,11 @@
 {
-  "name": "GTA VI - Offline story mode tests",
+  "name": "GTA VI - Cheat Pack by deFIATer/czupryneq",
   "id": "PPSA38500",
   "version": "01.002.001",
   "process": "eboot.bin",
+  "credits": [
+    "deFIATer/czupryneq"
+  ],
   "mods": [
     {
       "name": "Unlimited Health",
