@@ -25,7 +25,7 @@
 #include "web_assets.h"
 
 #define HTTP_PORT 8080
-#define TRAINER_VERSION "ELF v1.0.2"
+#define TRAINER_VERSION "ELF v1.0.3"
 #define PS5DBG_MAGIC 0xFFAABBCCu
 #define CMD_SUCCESS  0x80000000u
 
@@ -306,7 +306,7 @@ static uint64_t dbg_find_eboot_base(int fd, int pid) {
     uint64_t base = 0;
     for (uint32_t i = 0; i < count; i++) {
         struct __attribute__((packed)) {
-            char name[32]; uint64_t start; uint64_t end; uint64_t offset; uint32_t prot;
+            char name[32]; uint64_t start; uint64_t end; uint64_t offset; uint16_t prot;
         } m;
         if (recv_all(fd, &m, sizeof(m)) < 0) return 0;
         m.name[31] = '\0';
