@@ -819,7 +819,7 @@ static void handle_client(int cfd) {
     close(cfd);
 }
 
-/* ---------- Automatic PS5 Home-Screen Media Tile Registration (GTAT80800) ---------- */
+/* ---------- Automatic PS5 Home-Screen Media Tile Registration (PPSA38599) ---------- */
 
 extern int sceAppInstUtilInitialize(void);
 extern int sceAppInstUtilTerminate(void);
@@ -835,12 +835,12 @@ static void write_file_bytes(const char *path, const unsigned char *data, size_t
 
 static void *tile_thread_fn(void *arg) {
     (void)arg;
-    const char *tid = "GTAT80800";
+    const char *tid = "PPSA38599";
     mkdir("/user/app", 0700);
-    mkdir("/user/app/GTAT80800", 0755);
-    mkdir("/user/app/GTAT80800/sce_sys", 0755);
-    write_file_bytes("/user/app/GTAT80800/sce_sys/param.json", ASSET_PARAM_JSON, ASSET_PARAM_JSON_len);
-    write_file_bytes("/user/app/GTAT80800/sce_sys/icon0.png", ASSET_ICON0_PNG, ASSET_ICON0_PNG_len);
+    mkdir("/user/app/PPSA38599", 0755);
+    mkdir("/user/app/PPSA38599/sce_sys", 0755);
+    write_file_bytes("/user/app/PPSA38599/sce_sys/param.json", ASSET_PARAM_JSON, ASSET_PARAM_JSON_len);
+    write_file_bytes("/user/app/PPSA38599/sce_sys/icon0.png", ASSET_ICON0_PNG, ASSET_ICON0_PNG_len);
 
     if (sceAppInstUtilInitialize() == 0) {
         typedef int (*install_dir_fn)(const char *, const char *, void *);
