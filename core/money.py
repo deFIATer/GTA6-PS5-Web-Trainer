@@ -148,7 +148,28 @@ class MoneyMixin:
                 addr = m.start
                 while addr < m.end and not self._money_cancel_event.is_set():
                     length = min(0x10000000, m.end - addr)
-                    if is_f0 or is_fa:
+                    if is_f0:
+                        pat_f0 = 0x00000804 | ((amount & 0xFFFFFFFF) << 32)
+                        res = proc_scan_start(
+                            scan_ps5.connection,
+                            pid,
+                            addr,
+                            length,
+                            int(ScanValueType.UINT64),
+                            int(ScanCompareType.EXACT_VALUE),
+                            4,
+                            pat_f0,
+                        )
+                        for off, _ in res:
+                            a = addr + off
+                            try:
+                                ctx = scan_ps5.read(pid, a - 4, 16)
+                                u = struct.unpack("<4I", ctx)
+                                if (u[0] & 0x00FFFFFF) == 0x00AF2E50 and u[1] == 0x00000804:
+                                    found.append(a + 4)
+                            except Exception:
+                                pass
+                    elif is_fa:
                         res = proc_scan_start(
                             scan_ps5.connection,
                             pid,
@@ -157,16 +178,13 @@ class MoneyMixin:
                             int(ScanValueType.UINT32),
                             int(ScanCompareType.EXACT_VALUE),
                             4,
-                            amount & 0xFFFFFFFF,
+                            0x6F0A8D01,
                         )
                         for off, _ in res:
-                            a = addr + off
+                            a = addr + off + 12
                             try:
-                                ctx = scan_ps5.read(pid, a - 16, 24)
-                                u = struct.unpack("<6I", ctx)
-                                if is_f0 and (u[2] & 0x00FFFFFF) == 0x00AF2E50 and u[3] == 0x00000804:
-                                    found.append(a)
-                                elif is_fa and u[1] == 0x6F0A8D01:
+                                v = struct.unpack("<i", scan_ps5.read(pid, a, 4))[0]
+                                if v == amount:
                                     found.append(a)
                             except Exception:
                                 pass

@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -26,7 +27,7 @@
 #include "web_assets.h"
 
 #define HTTP_PORT 8080
-#define TRAINER_VERSION "ELF v1.1.3"
+#define TRAINER_VERSION "ELF v1.1.4"
 #define PS5DBG_MAGIC 0xFFAABBCCu
 #define CMD_SUCCESS  0x80000000u
 
@@ -149,10 +150,12 @@ static int recv_all(int fd, void *buf, size_t len) {
     return 0;
 }
 
-static int tcp_connect(const char *ip, int port) {
+static int tcp_connect_timeout(const char *ip, int port, int timeout_sec) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) return -1;
-    struct timeval tv = {.tv_sec = 3, .tv_usec = 0};
+    int one = 1;
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+    struct timeval tv = {.tv_sec = timeout_sec, .tv_usec = 0};
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
     struct sockaddr_in sa;
@@ -170,10 +173,20 @@ static int tcp_connect(const char *ip, int port) {
     return fd;
 }
 
+static int tcp_connect(const char *ip, int port) {
+    return tcp_connect_timeout(ip, port, 3);
+}
+
 /* ---------- ps5debug-NG protocol ---------- */
 
 static int dbg_send_cmd(int fd, uint32_t cmd, const void *body, uint32_t datalen) {
     uint32_t hdr[3] = {PS5DBG_MAGIC, cmd, datalen};
+    if (datalen > 0 && body && datalen <= 128) {
+        uint8_t pkt[12 + 128];
+        memcpy(pkt, hdr, 12);
+        memcpy(pkt + 12, body, datalen);
+        return send_all(fd, pkt, 12 + datalen);
+    }
     if (send_all(fd, hdr, sizeof(hdr)) < 0) return -1;
     if (datalen > 0 && body) {
         if (send_all(fd, body, datalen) < 0) return -1;
@@ -242,11 +255,11 @@ static int dbg_scan_u32(int fd, int pid, uint64_t addr, uint32_t length, uint32_
     return dbg_scan_u32_align(fd, pid, addr, length, 1, val, out_offs, max_out);
 }
 
-static int dbg_scan_u64(int fd, int pid, uint64_t addr, uint32_t length, uint64_t val, uint32_t *out_offs, int max_out) {
+static int dbg_scan_u64_align(int fd, int pid, uint64_t addr, uint32_t length, uint8_t align, uint64_t val, uint32_t *out_offs, int max_out) {
     struct __attribute__((packed)) {
         uint32_t pid; uint64_t addr; uint32_t length;
         uint8_t vtype; uint8_t ctype; uint8_t align; uint32_t lenData;
-    } req = {(uint32_t)pid, addr, length, 6, 0, 8, 8}; /* 6 = UINT64 */
+    } req = {(uint32_t)pid, addr, length, 6, 0, align, 8}; /* 6 = UINT64 */
     if (dbg_send_cmd(fd, CMD_PROC_SCAN_START, &req, sizeof(req)) < 0) return -1;
     if (dbg_expect_ok(fd) < 0) return -1;
     if (send_all(fd, &val, 8) < 0) return -1;
@@ -270,6 +283,10 @@ static int dbg_scan_u64(int fd, int pid, uint64_t addr, uint32_t length, uint64_
     }
     if (dbg_expect_ok(fd) < 0) return -1;
     return cnt;
+}
+
+static int dbg_scan_u64(int fd, int pid, uint64_t addr, uint32_t length, uint64_t val, uint32_t *out_offs, int max_out) {
+    return dbg_scan_u64_align(fd, pid, addr, length, 8, val, out_offs, max_out);
 }
 
 static pthread_mutex_t g_notify_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -687,7 +704,7 @@ static uint64_t get_ped_and_handle(uint32_t *out_handle) {
 /* ---------- Money Scanner (Dedicated TCP Channel in C) ---------- */
 
 static int money_scan_stats_c(const char *host, int port, int pid, uint64_t *out_addrs, int32_t *out_vals, int max_out) {
-    int fd = tcp_connect(host, port);
+    int fd = tcp_connect_timeout(host, port, 30);
     if (fd < 0) return -1;
     if (dbg_auth(fd) < 0) { close(fd); return -1; }
     uint32_t req = (uint32_t)pid;
@@ -731,7 +748,7 @@ static int money_scan_stats_c(const char *host, int port, int pid, uint64_t *out
 }
 
 static int money_scan_hud_c(const char *host, int port, int pid, int32_t amount, uint64_t *out_addrs, int max_out) {
-    int fd = tcp_connect(host, port);
+    int fd = tcp_connect_timeout(host, port, 30);
     if (fd < 0) return -1;
     if (dbg_auth(fd) < 0) { close(fd); return -1; }
     uint32_t req = (uint32_t)pid;
@@ -750,13 +767,14 @@ static int money_scan_hud_c(const char *host, int port, int pid, int32_t amount,
         }
     }
     int found = 0;
+    uint32_t *offs = (uint32_t *)malloc(4096 * sizeof(uint32_t));
+    if (!offs) { close(fd); return -1; }
     uint64_t pat = 0x00010000ULL | (((uint64_t)(uint32_t)amount) << 32);
     for (int r = 0; r < rcnt && !G.money_cancel; r++) {
         uint64_t addr = ranges[r].s;
         while (addr < ranges[r].e && !G.money_cancel) {
-            uint32_t len = (uint32_t)((ranges[r].e - addr > 0x10000000ULL) ? 0x10000000ULL : (ranges[r].e - addr));
-            uint32_t offs[1024];
-            int n = dbg_scan_u64(fd, pid, addr, len, pat, offs, 1024);
+            uint32_t len = (uint32_t)((ranges[r].e - addr > 0x08000000ULL) ? 0x08000000ULL : (ranges[r].e - addr));
+            int n = dbg_scan_u64(fd, pid, addr, len, pat, offs, 4096);
             if (n < 0) break;
             for (int i = 0; i < n && found + 1 < max_out && !G.money_cancel; i++) {
                 uint64_t a = addr + offs[i];
@@ -772,12 +790,13 @@ static int money_scan_hud_c(const char *host, int port, int pid, int32_t amount,
             addr += len;
         }
     }
+    free(offs);
     close(fd);
     return found;
 }
 
 static int money_scan_master_c(const char *host, int port, int pid, int32_t amount, uint64_t *out_addrs, int max_out) {
-    int fd = tcp_connect(host, port);
+    int fd = tcp_connect_timeout(host, port, 30);
     if (fd < 0) return -1;
     if (dbg_auth(fd) < 0) { close(fd); return -1; }
     uint32_t req = (uint32_t)pid;
@@ -800,13 +819,15 @@ static int money_scan_master_c(const char *host, int port, int pid, int32_t amou
     int found = 0;
     uint32_t *offs = (uint32_t *)malloc(4096 * sizeof(uint32_t));
     if (!offs) { close(fd); return -1; }
+    uint64_t pat_f0 = 0x00000804ULL | (((uint64_t)(uint32_t)amount) << 32);
     for (int r = 0; r < rcnt && !G.money_cancel; r++) {
         uint64_t addr = ranges[r].s;
         while (addr < ranges[r].e && !G.money_cancel) {
-            uint32_t len = (uint32_t)((ranges[r].e - addr > 0x10000000ULL) ? 0x10000000ULL : (ranges[r].e - addr));
+            uint32_t len = (uint32_t)((ranges[r].e - addr > 0x08000000ULL) ? 0x08000000ULL : (ranges[r].e - addr));
             if (ranges[r].kind == 1) {
-                /* 0xf0.. RAGEVM: scan rare 0x00000804 (align 4) instead of small cash amount! */
-                int n = dbg_scan_u32_align(fd, pid, addr, len, 4, 0x00000804u, offs, 4096);
+                /* 0xf0.. RAGEVM: scan UINT64 [0x00000804, amount] (align 4) -> ~8 hits in 0.04s! */
+                int n = dbg_scan_u64_align(fd, pid, addr, len, 4, pat_f0, offs, 4096);
+                if (n < 0) break;
                 for (int i = 0; i < n && found < max_out && !G.money_cancel; i++) {
                     uint64_t a = addr + offs[i];
                     uint32_t ctx[4];
@@ -817,8 +838,9 @@ static int money_scan_master_c(const char *host, int port, int pid, int32_t amou
                     }
                 }
             } else if (ranges[r].kind == 2) {
-                /* 0xfa.. script wallet: scan rare tag 0x6F0A8D01 (align 4) */
+                /* 0xfa.. script wallet: scan tag 0x6F0A8D01 (align 4) */
                 int n = dbg_scan_u32_align(fd, pid, addr, len, 4, 0x6F0A8D01u, offs, 4096);
+                if (n < 0) break;
                 for (int i = 0; i < n && found < max_out && !G.money_cancel; i++) {
                     uint64_t a = addr + offs[i] + 12;
                     int32_t v = 0;
@@ -827,8 +849,9 @@ static int money_scan_master_c(const char *host, int port, int pid, int32_t amou
                     }
                 }
             } else {
-                /* 0x11.. master copy: scan rare tag 0x6F0A8D01 (align 4) */
+                /* 0x11.. master copy: scan tag 0x6F0A8D01 (align 4) */
                 int n = dbg_scan_u32_align(fd, pid, addr, len, 4, 0x6F0A8D01u, offs, 4096);
+                if (n < 0) break;
                 for (int i = 0; i < n && found < max_out && !G.money_cancel; i++) {
                     uint64_t a = addr + offs[i] - 20;
                     struct __attribute__((packed)) { int32_t v; uint32_t z; uint64_t flag; } c;
@@ -846,7 +869,15 @@ static int money_scan_master_c(const char *host, int port, int pid, int32_t amou
     return found;
 }
 
-typedef struct { char host[64]; int port; int pid; int32_t amount; bool has_filter; } MoneyTask;
+typedef struct {
+    char host[64];
+    int port;
+    int pid;
+    int32_t amount;
+    bool has_filter;
+    uint64_t stat_addrs[16];
+    int stat_cnt;
+} MoneyTask;
 
 static void *money_manual_worker(void *arg) {
     MoneyTask *mt = (MoneyTask *)arg;
@@ -925,20 +956,30 @@ static void *money_enrich_hud_worker(void *arg) {
     int ecnt = 0;
     int mcnt = money_scan_master_c(mt->host, mt->port, mt->pid, mt->amount, extra, 12);
     if (mcnt > 0) ecnt += mcnt;
-    int hcnt = money_scan_hud_c(mt->host, mt->port, mt->pid, mt->amount, extra + ecnt, 24 - ecnt);
-    if (hcnt > 0) ecnt += hcnt;
-    if (ecnt > 0) {
-        pthread_mutex_lock(&G.lock);
-        if (G.pid == mt->pid && strcmp(G.money_mode, "locked") == 0) {
-            uint64_t merged[32]; int tot = 0;
-            for (int i = 0; i < ecnt && tot < 32; i++) merged[tot++] = extra[i];
-            for (int i = 0; i < G.money_addr_cnt && tot < 32; i++) merged[tot++] = G.money_addrs[i];
-            memcpy(G.money_addrs, merged, (size_t)tot * sizeof(uint64_t));
-            G.money_addr_cnt = tot;
-            snprintf(G.money_note, sizeof(G.money_note), "Auto-captured ($%d, %d addrs + Master/HUD)!", mt->amount, tot);
-        }
-        pthread_mutex_unlock(&G.lock);
+    if (!G.money_cancel) {
+        int hcnt = money_scan_hud_c(mt->host, mt->port, mt->pid, mt->amount, extra + ecnt, 24 - ecnt);
+        if (hcnt > 0) ecnt += hcnt;
     }
+    pthread_mutex_lock(&G.lock);
+    if (!G.money_cancel && G.pid == mt->pid && strcmp(G.money_mode, "auto_scanning") == 0) {
+        uint64_t merged[32]; int tot = 0;
+        for (int i = 0; i < ecnt && tot < 32; i++) merged[tot++] = extra[i];
+        for (int i = 0; i < mt->stat_cnt && tot < 32; i++) {
+            bool dup = false;
+            for (int j = 0; j < tot; j++) { if (merged[j] == mt->stat_addrs[i]) { dup = true; break; } }
+            if (!dup) merged[tot++] = mt->stat_addrs[i];
+        }
+        memcpy(G.money_addrs, merged, (size_t)tot * sizeof(uint64_t));
+        G.money_addr_cnt = tot;
+        snprintf(G.money_mode, sizeof(G.money_mode), "locked");
+        if (ecnt > 0) {
+            snprintf(G.money_note, sizeof(G.money_note), "Wallet ready ($%d, %d addrs: Master+HUD+Stats)!", mt->amount, tot);
+        } else {
+            snprintf(G.money_note, sizeof(G.money_note), "Wallet locked ($%d, %d stats — try Manual if HUD unchanged)", mt->amount, tot);
+        }
+        dbg_notify(G.money_note);
+    }
+    pthread_mutex_unlock(&G.lock);
     free(mt);
     return NULL;
 }
@@ -988,15 +1029,14 @@ static void *bg_thread_fn(void *arg) {
                 }
             }
             if (ch_cnt > 0) {
-                memcpy(G.money_addrs, ch_addrs, (size_t)ch_cnt * sizeof(uint64_t));
-                G.money_addr_cnt = ch_cnt;
-                snprintf(G.money_mode, sizeof(G.money_mode), "locked");
-                snprintf(G.money_note, sizeof(G.money_note), "Auto-captured ($%d, %d stats)!", ch_val, ch_cnt);
-                dbg_notify(G.money_note);
+                snprintf(G.money_mode, sizeof(G.money_mode), "auto_scanning");
+                snprintf(G.money_note, sizeof(G.money_note), "Detected $%d! Locking Master wallet & HUD (~8s)...", ch_val);
                 MoneyTask *mt = (MoneyTask *)calloc(1, sizeof(MoneyTask));
                 if (mt) {
                     snprintf(mt->host, sizeof(mt->host), "%s", G.host);
                     mt->port = G.port; mt->pid = G.pid; mt->amount = ch_val;
+                    mt->stat_cnt = ch_cnt > 16 ? 16 : ch_cnt;
+                    memcpy(mt->stat_addrs, ch_addrs, (size_t)mt->stat_cnt * sizeof(uint64_t));
                     pthread_t th;
                     pthread_create(&th, NULL, money_enrich_hud_worker, mt);
                     pthread_detach(th);
@@ -1425,7 +1465,7 @@ static void handle_client(int cfd) {
             if (nv > 2000000000LL) nv = 2000000000LL;
             int32_t nv32 = (int32_t)nv;
             for (int i = 0; i < G.money_addr_cnt; i++) dbg_write(G.sock, G.pid, G.money_addrs[i], &nv32, 4);
-            snprintf(msg, sizeof(msg), "+$%d -> now $%d", delta, nv32);
+            snprintf(msg, sizeof(msg), "+$%d -> now $%d (%d addrs)", delta, nv32, G.money_addr_cnt);
             dbg_notify(msg);
         }
     } else if (strcmp(path, "/api/money/set") == 0) {
@@ -1438,7 +1478,7 @@ static void handle_client(int cfd) {
             if (amt < 0) amt = 0;
             int32_t v = (int32_t)amt;
             for (int i = 0; i < G.money_addr_cnt; i++) dbg_write(G.sock, G.pid, G.money_addrs[i], &v, 4);
-            snprintf(msg, sizeof(msg), "Cash set to $%d", v);
+            snprintf(msg, sizeof(msg), "Cash set to $%d (%d addrs)", v, G.money_addr_cnt);
             dbg_notify(msg);
         }
     } else if (strcmp(path, "/api/money/reset") == 0) {

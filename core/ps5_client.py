@@ -536,7 +536,7 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
                 "base": hex(self.base) if self.base else None,
                 "titleid": self.titleid,
                 "app_ver": self.app_ver,
-                "trainer_version": "Python v1.1.3",
+                "trainer_version": "Python v1.1.4",
                 "is_elf": False,
                 "fw": self.fw_str,
                 "kstuff": self.kstuff_active,
@@ -577,7 +577,7 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
                 "base": hex(self.base) if self.base else None,
                 "titleid": self.titleid,
                 "app_ver": self.app_ver,
-                "trainer_version": "Python v1.1.3",
+                "trainer_version": "Python v1.1.4",
                 "is_elf": False,
                 "fw": self.fw_str,
                 "kstuff": self.kstuff_active,
@@ -817,21 +817,16 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
                                 by_val.setdefault(val, []).append(addr)
                             best_val, stat_hits = max(by_val.items(), key=lambda kv: len(kv[1]))
                             if stat_hits:
-                                # Immediately lock stat addresses without blocking the main lock!
-                                self.money_candidates = list(stat_hits)
-                                self.money_mode = "locked"
+                                # Keep in auto_scanning until Master + HUD addresses are locked so +$1M always works on first click!
+                                self.money_mode = "auto_scanning"
                                 self.money_watch_note = (
-                                    f"Przechwycono automatycznie (${best_val:,}, {len(stat_hits)} adresy)!"
+                                    f"Wykryto ${best_val:,}! Blokuję Master Wallet i HUD (~8s)..."
                                 ).replace(",", " ")
-                                self._save_session_cache()
                                 self._log(
-                                    f"Auto-detected money=${best_val} stat_addrs={[hex(a) for a in stat_hits]}"
+                                    f"Auto-detected money=${best_val} stat_addrs={[hex(a) for a in stat_hits]}; scanning Master+HUD..."
                                 )
-                                self._notify_ps5(
-                                    f"Wykryto portfel (${best_val:,})!".replace(",", " ")
-                                )
-                                # Enrich with HUD wallet pair addresses asynchronously (never holds self.lock)
                                 h_host, h_port, h_pid, h_val = self.host, self.port, self.pid, best_val
+                                h_stats = list(stat_hits)
 
                                 def _enrich_hud() -> None:
                                     try:
@@ -842,19 +837,25 @@ class PS5Trainer(VehiclesMixin, MoneyMixin, SubtitlesMixin):
                                             h_host, h_port, h_pid, h_val
                                         )
                                         extra = master_hits + hud_hits
-                                        if not extra:
-                                            return
                                         with self.lock:
-                                            if self.pid != h_pid or self.money_mode != "locked":
+                                            if (
+                                                self._money_cancel_event.is_set()
+                                                or self.pid != h_pid
+                                                or self.money_mode != "auto_scanning"
+                                            ):
                                                 return
-                                            merged = list(dict.fromkeys(extra + self.money_candidates))
+                                            merged = list(dict.fromkeys(extra + h_stats))
                                             self.money_candidates = merged
+                                            self.money_mode = "locked"
                                             self.money_watch_note = (
-                                                f"Przechwycono automatycznie (${h_val:,}, {len(merged)} adresy + HUD)!"
+                                                f"Portfel gotowy (${h_val:,}, {len(merged)} adresy: Master+HUD+Stats)!"
                                             ).replace(",", " ")
                                             self._save_session_cache()
                                             self._log(
-                                                f"Auto-money enriched with master+HUD addrs={[hex(a) for a in extra]}"
+                                                f"Auto-money locked {len(merged)} addrs={[hex(a) for a in merged]}"
+                                            )
+                                            self._notify_ps5(
+                                                f"Portfel gotowy (${h_val:,}, {len(merged)} adr.)!".replace(",", " ")
                                             )
                                     except Exception:
                                         pass

@@ -2,6 +2,12 @@
 
 All notable changes to **GTA VI PS5 Web Trainer** are documented in this file.
 
+## [v1.1.4] - 2026-11-27
+### Fixed
+- **ELF Money Scanner 3s Socket Timeout**: Dedicated PS5 RAM scanner sockets (`money_scan_stats_c`, `money_scan_master_c`, `money_scan_hud_c`) now use a **30-second timeout** (`tcp_connect_timeout(..., 30)`) and 128 MB chunks instead of the 3-second RPC timeout, preventing `CMD_PROC_SCAN_START` on `0x11...` from aborting silently before finding Master and HUD wallet addresses.
+- **`0xf0...` Master Wallet Truncation (27,282 → 8 hits in 0.04s)**: Upgraded `0xf0...` RAGEVM scanning in both ELF and Python to match 64-bit `[0x00000804, amount]` (`align=4`), eliminating buffer truncation and locating the authoritative RAGEVM wallet instantly.
+- **Mode 2 Auto-Detect Race Condition (ELF & Python)**: Auto-Detect now stays in `auto_scanning` (`Detected $X! Locking Master wallet & HUD (~8s)...`) until all Master (`0xf0...`, `0xfa...`, `0x11...`), HUD, and Stat addresses are collected, only then switching to `locked` and notifying the user — so clicking `+$1M` or `Set $1,000,000` immediately updates the real in-game balance on the very first click.
+
 ## [v1.1.3] - 2026-11-27
 ### Changed
 - **Mode 2 · Auto-Detect requires current cash (`>= 0`)**: Entering your current cash balance (e.g. `0` or `250`) is now mandatory in both UI and backend (ELF & Python) to eliminate false-positive stat captures.
