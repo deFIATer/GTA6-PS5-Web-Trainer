@@ -2,6 +2,13 @@
 
 All notable changes to **GTA VI PS5 Web Trainer** are documented in this file.
 
+## [v2.0.0] - 2026-11-28
+### Added
+- **GitHub Auto-Updater (Python Web Trainer)**:
+  - Automatically checks GitHub (`deFIATer/GTA6-PS5-Web-Trainer`) for updates on startup in `trainer.py` (`core/updater.py`).
+  - Prompts the user in English (`[?] Do you want to update to the latest version now? [y/N]:`) before downloading and applying the update.
+  - Supports both `git` clones (`git fetch` / `git pull --ff-only`) and ZIP downloads (GitHub API release/tag check + `main.zip` update), with automatic process restart after updating and `--no-update-check` flag to skip.
+
 ## [v1.2.1] - 2026-11-27
 ### Added
 - **22 Live-Verified Top Vehicle Spawners in GoldHEN / etaHEN Cheat JSON (`cheats/PPSA38500_01.002.001.json`)**:

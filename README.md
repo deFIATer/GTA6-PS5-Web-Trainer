@@ -20,6 +20,7 @@ You can pick whichever method fits your setup best — all 3 are included in thi
 ## ✨ Features
 
 - **Main-thread GOT Hook** (`scePadReadState`) — executes RAGE engine functions safely on the game's main thread.
+- **GitHub Auto-Updater (Python Web Trainer)**: Checks GitHub on startup and prompts in English before updating to the latest version (supports `git` clones & ZIP downloads; skip with `--no-update-check`).
 - **Player** *(Recommended)*:
   - All-in-One (Heal + Armor + Repair), separate Heal / Armor / Repair, **God Mode** (auto-heal & auto-repair), **Never Wanted**, Wanted Level `0–5` & `+/-1`, **PS5 On-Screen Notifications** (3s paced dedicated TCP channel).
   - **5 Native `eboot.bin` Patches** (toggleable ON/OFF safely): **Unlimited Health (Native)**, **Unlimited Stamina**, **Infinite Ammo**, **Max Relationship**, **Max Criminal Profile**.

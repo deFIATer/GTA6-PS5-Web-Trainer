@@ -12,7 +12,7 @@ import argparse
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
-from core import PS5Trainer, load_vehicles
+from core import PS5Trainer, check_for_updates, load_vehicles
 from server import get_lan_ip, make_handler
 
 
@@ -22,9 +22,17 @@ def main() -> int:
     parser.add_argument("--ps5-port", type=int, default=744, help="Port ps5debug-NG")
     parser.add_argument("--listen", default="0.0.0.0", help="Adres nasłuchu HTTP")
     parser.add_argument("--http-port", type=int, default=8080, help="Port panelu Web")
+    parser.add_argument(
+        "--no-update-check",
+        action="store_true",
+        help="Skip checking GitHub for updates on startup",
+    )
     args = parser.parse_args()
 
     here = Path(__file__).resolve().parent
+    if not args.no_update_check:
+        check_for_updates(here)
+
     vehicles = load_vehicles(here / "Vehicles.h")
     print(f"[+] Załadowano {len(vehicles)} pojazdów z {here / 'Vehicles.h'}")
 
