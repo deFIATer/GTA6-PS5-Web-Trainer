@@ -1,3 +1,15 @@
+
+async function spawnByName(name) {
+  try {
+    const r = await fetch('/api/spawn', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (j && (j.message || j.error)) console.log('[spawn]', j.message || j.error);
+  } catch (e) { console.log('spawn error', e); }
+}
 let allVehicles = [];
 let categories = [];
 let activeCategory = "Wszystkie";

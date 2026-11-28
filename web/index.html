@@ -32,6 +32,7 @@ try {
       </div>
       <nav class="side-nav">
         <button class="side-btn active" data-side="self" onclick="switchTab('self')"><span aria-hidden="true">👤</span> <span data-i18n="nav_self">Player</span></button>
+        <button class="side-btn" data-side="wanted" onclick="switchTab('wanted')"><span aria-hidden="true">*</span> <span>Wanted Cars</span></button>
         <button class="side-btn" data-side="vehicles" onclick="switchTab('vehicles')"><span aria-hidden="true">🚗</span> <span data-i18n="nav_vehicles_full">Vehicles (252)</span></button>
         <button class="side-btn" data-side="world" onclick="switchTab('world')"><span aria-hidden="true">🌤️</span> <span data-i18n="nav_world">World</span></button>
         <button class="side-btn" id="side-lektor" data-side="lektor" onclick="switchTab('lektor')" style="display:none"><span aria-hidden="true">🎙️</span> <span data-i18n="nav_lektor_full">Lektor PL (Beta)</span></button>
@@ -321,6 +322,60 @@ try {
           <div id="sub-history" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto">
             <div style="font-size:12px;color:var(--muted)" data-i18n="lek_hist_empty">No subtitles captured yet.</div>
           </div>
+        </div>
+      </section>
+
+
+      <!-- TAB: WANTED CARS -->
+      <section id="tab-wanted" class="tab-panel">
+        <div class="card">
+          <div class="card-title">Wanted Cars - one-tap spawn</div>
+          <p style="color:var(--muted);font-size:13px;margin:0 0 10px">
+            Wanted cars + catalog picks (36 models). Spawn works in Story Mode only.
+          </p>
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
+            <thead><tr style="text-align:left;color:var(--muted);font-size:12px">
+              <th style="padding:6px 4px">Car</th><th style="padding:6px 4px">Category</th><th style="padding:6px 4px">Spawn</th>
+            </tr></thead>
+            <tbody>
+              <tr><td><b>Infernus2</b></td><td style="color:var(--muted);font-size:12px">Supersamochody</td><td><button class="btn sm ok" onclick="spawnByName('infernus2')">spawn</button></td></tr>
+              <tr><td><b>Dominator</b></td><td style="color:var(--muted);font-size:12px">Muscle</td><td><button class="btn sm ok" onclick="spawnByName('dominator')">spawn</button></td></tr>
+              <tr><td><b>dominator7</b></td><td style="color:var(--muted);font-size:12px">Muscle</td><td><button class="btn sm ok" onclick="spawnByName('dominator7')">spawn</button></td></tr>
+              <tr><td><b>Dominator9</b></td><td style="color:var(--muted);font-size:12px">Muscle</td><td><button class="btn sm ok" onclick="spawnByName('dominator9')">spawn</button></td></tr>
+              <tr><td><b>DominatorClassic</b></td><td style="color:var(--muted);font-size:12px">Muscle</td><td><button class="btn sm ok" onclick="spawnByName('dominatorclassic')">spawn</button></td></tr>
+              <tr><td><b>Sultan</b></td><td style="color:var(--muted);font-size:12px">Sportowe</td><td><button class="btn sm ok" onclick="spawnByName('sultan')">spawn</button></td></tr>
+              <tr><td><b>sovereign107</b></td><td style="color:var(--muted);font-size:12px">Motocykle</td><td><button class="btn sm ok" onclick="spawnByName('sovereign107')">spawn</button></td></tr>
+              <tr><td><b>RHINO</b></td><td style="color:var(--muted);font-size:12px">Służby i Wojskowe</td><td><button class="btn sm ok" onclick="spawnByName('rhino')">spawn</button></td></tr>
+              <tr><td><b>Banshee</b></td><td style="color:var(--muted);font-size:12px">Sportowe</td><td><button class="btn sm ok" onclick="spawnByName('banshee')">spawn</button></td></tr>
+              <tr><td><b>Cheetah2</b></td><td style="color:var(--muted);font-size:12px">Supersamochody</td><td><button class="btn sm ok" onclick="spawnByName('cheetah2')">spawn</button></td></tr>
+              <tr><td><b>216cstreamer</b></td><td style="color:var(--muted);font-size:12px">Kompakty</td><td><button class="btn sm ok" onclick="spawnByName('216cstreamer')">spawn</button></td></tr>
+              <tr><td><b>Akane</b></td><td style="color:var(--muted);font-size:12px">Kompakty</td><td><button class="btn sm ok" onclick="spawnByName('akane')">spawn</button></td></tr>
+              <tr><td><b>Aleutian</b></td><td style="color:var(--muted);font-size:12px">SUV i Kombi</td><td><button class="btn sm ok" onclick="spawnByName('aleutian')">spawn</button></td></tr>
+              <tr><td><b>Allander</b></td><td style="color:var(--muted);font-size:12px">SUV i Kombi</td><td><button class="btn sm ok" onclick="spawnByName('allander')">spawn</button></td></tr>
+              <tr><td><b>Animus</b></td><td style="color:var(--muted);font-size:12px">Sedany i Coupe</td><td><button class="btn sm ok" onclick="spawnByName('animus')">spawn</button></td></tr>
+              <tr><td><b>aphid</b></td><td style="color:var(--muted);font-size:12px">Kompakty</td><td><button class="btn sm ok" onclick="spawnByName('aphid')">spawn</button></td></tr>
+              <tr><td><b>Arcturus</b></td><td style="color:var(--muted);font-size:12px">Kompakty</td><td><button class="btn sm ok" onclick="spawnByName('arcturus')">spawn</button></td></tr>
+              <tr><td><b>Asterope2</b></td><td style="color:var(--muted);font-size:12px">Sedany i Coupe</td><td><button class="btn sm ok" onclick="spawnByName('asterope2')">spawn</button></td></tr>
+              <tr><td><b>Astron</b></td><td style="color:var(--muted);font-size:12px">SUV i Kombi</td><td><button class="btn sm ok" onclick="spawnByName('astron')">spawn</button></td></tr>
+              <tr><td><b>baller2</b></td><td style="color:var(--muted);font-size:12px">SUV i Kombi</td><td><button class="btn sm ok" onclick="spawnByName('baller2')">spawn</button></td></tr>
+              <tr><td><b>baller8</b></td><td style="color:var(--muted);font-size:12px">SUV i Kombi</td><td><button class="btn sm ok" onclick="spawnByName('baller8')">spawn</button></td></tr>
+              <tr><td><b>bandito</b></td><td style="color:var(--muted);font-size:12px">Terenowe i Pickupy</td><td><button class="btn sm ok" onclick="spawnByName('bandito')">spawn</button></td></tr>
+              <tr><td><b>BFInjection4</b></td><td style="color:var(--muted);font-size:12px">Terenowe i Pickupy</td><td><button class="btn sm ok" onclick="spawnByName('bfinjection4')">spawn</button></td></tr>
+              <tr><td><b>Bison 1800</b></td><td style="color:var(--muted);font-size:12px">Terenowe i Pickupy</td><td><button class="btn sm ok" onclick="spawnByName('bison1800')">spawn</button></td></tr>
+              <tr><td><b>Bison 3800</b></td><td style="color:var(--muted);font-size:12px">Terenowe i Pickupy</td><td><button class="btn sm ok" onclick="spawnByName('bison3800')">spawn</button></td></tr>
+              <tr><td><b>Blast</b></td><td style="color:var(--muted);font-size:12px">Terenowe i Pickupy</td><td><button class="btn sm ok" onclick="spawnByName('blast')">spawn</button></td></tr>
+              <tr><td><b>blazer4</b></td><td style="color:var(--muted);font-size:12px">Terenowe i Pickupy</td><td><button class="btn sm ok" onclick="spawnByName('blazer4')">spawn</button></td></tr>
+              <tr><td><b>Blista2</b></td><td style="color:var(--muted);font-size:12px">Sportowe</td><td><button class="btn sm ok" onclick="spawnByName('blista2')">spawn</button></td></tr>
+              <tr><td><b>Bogan</b></td><td style="color:var(--muted);font-size:12px">Sedany i Coupe</td><td><button class="btn sm ok" onclick="spawnByName('bogan')">spawn</button></td></tr>
+              <tr><td><b>Buccaneer</b></td><td style="color:var(--muted);font-size:12px">Muscle</td><td><button class="btn sm ok" onclick="spawnByName('buccaneer')">spawn</button></td></tr>
+              <tr><td><b>Buffalo</b></td><td style="color:var(--muted);font-size:12px">Sportowe</td><td><button class="btn sm ok" onclick="spawnByName('buffalo')">spawn</button></td></tr>
+              <tr><td><b>Buffalo6</b></td><td style="color:var(--muted);font-size:12px">Sportowe</td><td><button class="btn sm ok" onclick="spawnByName('buffalo6')">spawn</button></td></tr>
+              <tr><td><b>Caracara 4x4</b></td><td style="color:var(--muted);font-size:12px">Terenowe i Pickupy</td><td><button class="btn sm ok" onclick="spawnByName('caracara4x4')">spawn</button></td></tr>
+              <tr><td><b>Carbonizzare</b></td><td style="color:var(--muted);font-size:12px">Sportowe</td><td><button class="btn sm ok" onclick="spawnByName('carbonizzare')">spawn</button></td></tr>
+              <tr><td><b>cavalcade3</b></td><td style="color:var(--muted);font-size:12px">SUV i Kombi</td><td><button class="btn sm ok" onclick="spawnByName('cavalcade3')">spawn</button></td></tr>
+              <tr><td><b>Chavos XS</b></td><td style="color:var(--muted);font-size:12px">Sedany i Coupe</td><td><button class="btn sm ok" onclick="spawnByName('chavosxs')">spawn</button></td></tr>
+            </tbody>
+          </table>
         </div>
       </section>
 

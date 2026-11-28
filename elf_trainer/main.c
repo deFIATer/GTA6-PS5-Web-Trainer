@@ -1294,6 +1294,15 @@ static void handle_client(int cfd) {
         } else if (strcmp(path, "/api/status") == 0) {
             char st[6144];
             pthread_mutex_lock(&G.lock);
+            /* auto_reconnect: re-find the game if the attached process died (restart/crash). */
+            if (G.connected && G.pid > 0) {
+                uint64_t probe = 0;
+                if (dbg_read(G.sock, G.pid, G.base + OFF_LOCAL_PLAYER_PED, &probe, 8) < 0) {
+                    if (trainer_connect_locked(G.host[0] ? G.host : "127.0.0.1", G.port ? G.port : 744) == 0) {
+                        dbg_notify("Trainer reconnected to restarted game");
+                    }
+                }
+            }
             build_status_json(st, sizeof(st));
             pthread_mutex_unlock(&G.lock);
             http_send(cfd, 200, "application/json; charset=utf-8", st, strlen(st));
@@ -1406,7 +1415,27 @@ static void handle_client(int cfd) {
                 break;
             }
         }
+        bool spawn_world_ok = false;
         if (hash) {
+            uint64_t sp = 0;
+            (void)dbg_read(G.sock, G.pid, G.base + OFF_LOCAL_PLAYER_PED, &sp, 8);
+            if (sp) {
+                uint8_t pm[64];
+                if (dbg_read(G.sock, G.pid, sp + 0x40, pm, 64) == 0) {
+                    float m[16];
+                    int16_t sec[2];
+                    memcpy(m, pm, 64);
+                    memcpy(sec, &m[15], 4);
+                    float spx = m[12] + 32.0f * (float)sec[0];
+                    float spy = m[13] + 32.0f * (float)sec[1];
+                    if (spx > 1.0f || spx < -1.0f || spy > 1.0f || spy < -1.0f) spawn_world_ok = true;
+                }
+            }
+        }
+        if (hash && !spawn_world_ok) {
+            ok = false;
+            snprintf(msg, sizeof(msg), "game not ready (load Story Mode / wait until you stand in the world)");
+        } else if (hash) {
             char serr[128] = {0};
             if (spawn_vehicle_streamed(hash, serr, sizeof(serr))) {
                 snprintf(msg, sizeof(msg), "Spawned %s", vname);
